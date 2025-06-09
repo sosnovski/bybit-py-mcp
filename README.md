@@ -114,7 +114,7 @@ Add to your VS Code settings.json:
       "bybit-mcp": {
         "type": "stdio",
         "command": "uv",
-        "args": ["run", "bybit-mcp"],
+        "args": ["run","-i", "bybit-mcp"],
         "env": {
           "BYBIT_API_KEY": "${input:bybit_api_key}",
           "BYBIT_API_SECRET": "${input:bybit_api_secret}"
