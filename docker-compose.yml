@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  bybit-mcp:
+    build: .
+    container_name: bybit-mcp-server
+    environment:
+      - BYBIT_API_KEY=${BYBIT_API_KEY}
+      - BYBIT_API_SECRET=${BYBIT_API_SECRET}
+    stdin_open: true
+    tty: true
+    # For MCP stdio communication
+    volumes:
+      - /tmp:/tmp
+    restart: unless-stopped
+    # Uncomment if you want to expose a port for HTTP-based MCP
+    # ports:
+    #   - "8000:8000"
