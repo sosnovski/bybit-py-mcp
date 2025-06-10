@@ -10,6 +10,7 @@ import json
 import logging
 from typing import Any, Dict, List
 
+from dotenv import load_dotenv  # Correctly placed
 from mcp.server import Server
 from mcp.server.lowlevel import NotificationOptions
 from mcp.server.models import InitializationOptions
@@ -21,6 +22,7 @@ from mcp.types import (
 )
 from pydantic import AnyUrl
 
+# Import market functions
 from .market import (
     get_funding_rate_history,
     get_index_price_kline,
@@ -38,6 +40,24 @@ from .market import (
     get_tickers,
 )
 
+# Import trade functions and TRADING_ENABLED flag
+from .trade import (
+    TRADING_ENABLED,  # Import the flag
+    amend_order,
+    batch_amend_order,
+    batch_cancel_order,
+    batch_place_order,
+    cancel_all_orders,
+    cancel_order,
+    get_open_closed_orders,
+    get_order_history,
+    get_trade_history,
+    place_order,
+)
+
+# Load environment variables from .env file
+load_dotenv()  # Call load_dotenv at the module level
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bybit-mcp")
@@ -48,8 +68,8 @@ server = Server("bybit-mcp")
 
 @server.list_tools()
 async def handle_list_tools() -> List[Tool]:
-    """List all available Bybit market data tools."""
-    return [
+    """List all available Bybit market data and trading tools."""
+    market_tools = [
         Tool(
             name="get_server_time",
             description="Get the current Bybit server time",
@@ -506,58 +526,230 @@ async def handle_list_tools() -> List[Tool]:
         ),
     ]
 
+    active_trade_tools = []
+    if TRADING_ENABLED:
+        active_trade_tools.extend(
+            [
+                Tool(
+                    name="place_order",
+                    description="Place a new order. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category (linear, spot, option, inverse)"},
+                            "symbol": {"type": "string", "description": "Symbol name (e.g., BTCUSDT)"},
+                            "side": {"type": "string", "description": "Buy or Sell"},
+                            "orderType": {"type": "string", "description": "Market or Limit"},
+                            "qty": {"type": "string", "description": "Order quantity"},
+                            "price": {"type": "string", "description": "Order price (for Limit orders)"},
+                            "isLeverage": {"type": "integer", "description": "Whether to use leverage (spot margin)"},
+                            "orderLinkId": {"type": "string", "description": "User-defined order ID"},
+                        },
+                        "required": ["category", "symbol", "side", "orderType", "qty"],
+                    },
+                ),
+                Tool(
+                    name="amend_order",
+                    description="Amend an existing order. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "symbol": {"type": "string", "description": "Symbol name"},
+                            "orderId": {"type": "string", "description": "Order ID (either orderId or orderLinkId required)"},
+                            "orderLinkId": {"type": "string", "description": "User-defined order ID"},
+                            "qty": {"type": "string", "description": "New quantity"},
+                            "price": {"type": "string", "description": "New price"},
+                            # Add other amendable parameters from trade.py
+                        },
+                        "required": ["category", "symbol"],
+                    },
+                ),
+                Tool(
+                    name="cancel_order",
+                    description="Cancel an existing order. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "symbol": {"type": "string", "description": "Symbol name"},
+                            "orderId": {"type": "string", "description": "Order ID (either orderId or orderLinkId required)"},
+                            "orderLinkId": {"type": "string", "description": "User-defined order ID"},
+                        },
+                        "required": ["category", "symbol"],
+                    },
+                ),
+                Tool(
+                    name="cancel_all_orders",
+                    description="Cancel all open orders for a category/symbol. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "symbol": {"type": "string", "description": "Symbol name (optional)"},
+                            "baseCoin": {"type": "string", "description": "Base coin (optional)"},
+                            "settleCoin": {"type": "string", "description": "Settle coin (optional)"},
+                            "orderFilter": {"type": "string", "description": "Order filter (e.g., Order, StopOrder) (optional)"},
+                        },
+                        "required": ["category"],
+                    },
+                ),
+                Tool(
+                    name="batch_place_order",
+                    description="Place a batch of new orders. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "request": {
+                                "type": "array",
+                                "description": "List of order creation requests",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "symbol": {"type": "string"},
+                                        "side": {"type": "string"},
+                                        "orderType": {"type": "string"},
+                                        "qty": {"type": "string"},
+                                        "price": {"type": "string"},
+                                        "orderLinkId": {"type": "string"},
+                                        # Add other relevant batch place order item fields
+                                    },
+                                    "required": ["symbol", "side", "orderType", "qty"],
+                                },
+                            },
+                        },
+                        "required": ["category", "request"],
+                    },
+                ),
+                Tool(
+                    name="batch_amend_order",
+                    description="Amend a batch of existing orders. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "request": {
+                                "type": "array",
+                                "description": "List of order amendment requests",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "symbol": {"type": "string"},
+                                        "orderId": {"type": "string"},
+                                        "orderLinkId": {"type": "string"},
+                                        "qty": {"type": "string"},
+                                        "price": {"type": "string"},
+                                        # Add other relevant batch amend order item fields
+                                    },
+                                    "required": ["symbol"],  # orderId or orderLinkId also effectively required per item
+                                },
+                            },
+                        },
+                        "required": ["category", "request"],
+                    },
+                ),
+                Tool(
+                    name="batch_cancel_order",
+                    description="Cancel a batch of existing orders. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "request": {
+                                "type": "array",
+                                "description": "List of order cancellation requests",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "symbol": {"type": "string"},
+                                        "orderId": {"type": "string"},
+                                        "orderLinkId": {"type": "string"},
+                                        # Add other relevant batch cancel order item fields
+                                    },
+                                    "required": ["symbol"],  # orderId or orderLinkId also effectively required per item
+                                },
+                            },
+                        },
+                        "required": ["category", "request"],
+                    },
+                ),
+            ]
+        )
+
+    # These are read-only and can always be listed
+    trade_info_tools = [
+        Tool(
+            name="get_open_closed_orders",
+            description="Get open and closed orders for a category/symbol.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Product category"},
+                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
+                    # Add other params like baseCoin, orderId, limit, cursor
+                },
+                "required": ["category"],
+            },
+        ),
+        Tool(
+            name="get_order_history",
+            description="Get order history for a category/symbol.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Product category"},
+                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
+                    # Add other params like orderStatus, startTime, endTime, limit
+                },
+                "required": ["category"],
+            },
+        ),
+        Tool(
+            name="get_trade_history",
+            description="Get trade history (executions) for a category/symbol.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Product category"},
+                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
+                    # Add other params like execType, limit, startTime, endTime
+                },
+                "required": ["category"],
+            },
+        ),
+    ]
+
+    return market_tools + active_trade_tools + trade_info_tools  # Combined active_trade_tools
+
 
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
-    """Handle tool calls for Bybit market data endpoints."""
+    """Handle tool calls for Bybit market data and trading endpoints."""
     try:
+        # Market Data Tools
         if name == "get_server_time":
             result = get_server_time()
-            # Extract time information from the response dict
-            time_second = result.get("time", "Unknown")
             return [
                 TextContent(
                     type="text",
-                    text=f"Bybit Server Time: {time_second}",
+                    text=f"Bybit Server Time: {result.get('timeSecond', 'Unknown')}\nFull Response: {json.dumps(result, indent=2)}",
                 )
             ]
-
         elif name == "get_tickers":
             result = get_tickers(**arguments)
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Ticker data for {result.category}:\n{json.dumps(result.dict(), indent=2)}",
-                )
-            ]
-
+            return [TextContent(type="text", text=f"Ticker data for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
         elif name == "get_order_book":
             result = get_order_book(**arguments)
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Order book for {result.s}:\n{json.dumps(result.dict(), indent=2)}",
-                )
-            ]
-
+            return [TextContent(type="text", text=f"Order book for {result.s}:\n{json.dumps(result.dict(), indent=2)}")]
         elif name == "get_recent_trades":
             result = get_recent_trades(**arguments)
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Recent trades for {result.category}:\n{json.dumps(result.dict(), indent=2)}",
-                )
-            ]
-
+            return [TextContent(type="text", text=f"Recent trades for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
         elif name == "get_kline":
             result = get_kline(**arguments)
             return [
-                TextContent(
-                    type="text",
-                    text=f"Kline data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}",
-                )
+                TextContent(type="text", text=f"Kline data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}")
             ]
-
         elif name == "get_mark_price_kline":
             result = get_mark_price_kline(**arguments)
             return [
@@ -566,7 +758,6 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
                     text=f"Mark price kline data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}",
                 )
             ]
-
         elif name == "get_index_price_kline":
             result = get_index_price_kline(**arguments)
             return [
@@ -575,7 +766,6 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
                     text=f"Index price kline data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}",
                 )
             ]
-
         elif name == "get_premium_index_price_kline":
             result = get_premium_index_price_kline(**arguments)
             return [
@@ -584,77 +774,74 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
                     text=f"Premium index price kline data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}",
                 )
             ]
-
         elif name == "get_instruments_info":
             result = get_instruments_info(**arguments)
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Instruments info for {result.category}:\n{json.dumps(result.dict(), indent=2)}",
-                )
-            ]
-
+            return [TextContent(type="text", text=f"Instruments info for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
         elif name == "get_funding_rate_history":
             result = get_funding_rate_history(**arguments)
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Funding rate history for {result.category}:\n{json.dumps(result.dict(), indent=2)}",
-                )
-            ]
-
+            return [TextContent(type="text", text=f"Funding rate history for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
         elif name == "get_open_interest":
             result = get_open_interest(**arguments)
             return [
                 TextContent(
-                    type="text",
-                    text=f"Open interest data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}",
+                    type="text", text=f"Open interest data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}"
                 )
             ]
-
         elif name == "get_insurance":
             result = get_insurance(**arguments)
             return [
                 TextContent(
-                    type="text",
-                    text=f"Insurance fund data (updated: {result.updatedTime}):\n{json.dumps(result.dict(), indent=2)}",
+                    type="text", text=f"Insurance fund data (updated: {result.updatedTime}):\n{json.dumps(result.dict(), indent=2)}"
                 )
             ]
-
         elif name == "get_risk_limit":
             result = get_risk_limit(**arguments)
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Risk limit data for {result.category}:\n{json.dumps(result.dict(), indent=2)}",
-                )
-            ]
-
+            return [TextContent(type="text", text=f"Risk limit data for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
         elif name == "get_long_short_ratio":
             result = get_long_short_ratio(**arguments)
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Long/short ratio data:\n{json.dumps(result.dict(), indent=2)}",
-                )
-            ]
+            return [TextContent(type="text", text=f"Long/short ratio data:\n{json.dumps(result.dict(), indent=2)}")]
+
+        # Trading Tools (TRADING_ENABLED check is now primarily within trade.py functions)
+        # The tools are only listed if TRADING_ENABLED is true,
+        # but the functions in trade.py provide a secondary check.
+        elif name == "place_order":
+            result = place_order(**arguments)
+            return [TextContent(type="text", text=f"Place Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+        elif name == "amend_order":
+            result = amend_order(**arguments)
+            return [TextContent(type="text", text=f"Amend Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+        elif name == "cancel_order":
+            result = cancel_order(**arguments)
+            return [TextContent(type="text", text=f"Cancel Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+        elif name == "get_open_closed_orders":  # Read-only
+            result = get_open_closed_orders(**arguments)
+            return [TextContent(type="text", text=f"Open/Closed Orders:\n{json.dumps(result.dict(), indent=2)}")]
+        elif name == "cancel_all_orders":
+            result = cancel_all_orders(**arguments)
+            return [TextContent(type="text", text=f"Cancel All Orders Response:\n{json.dumps(result.dict(), indent=2)}")]
+        elif name == "get_order_history":  # Read-only
+            result = get_order_history(**arguments)
+            return [TextContent(type="text", text=f"Order History:\n{json.dumps(result.dict(), indent=2)}")]
+        elif name == "get_trade_history":  # Read-only
+            result = get_trade_history(**arguments)
+            return [TextContent(type="text", text=f"Trade History:\n{json.dumps(result.dict(), indent=2)}")]
+        elif name == "batch_place_order":
+            result = batch_place_order(**arguments)
+            return [TextContent(type="text", text=f"Batch Place Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+        elif name == "batch_amend_order":
+            result = batch_amend_order(**arguments)
+            return [TextContent(type="text", text=f"Batch Amend Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+        elif name == "batch_cancel_order":
+            result = batch_cancel_order(**arguments)
+            return [TextContent(type="text", text=f"Batch Cancel Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+        # ... (add handlers for get_spot_borrow_quota and set_dcp if implemented) ...
 
         else:
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Unknown tool: {name}",
-                )
-            ]
+            return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
     except Exception as e:
-        logger.error(f"Error calling tool {name}: {e}")
-        return [
-            TextContent(
-                type="text",
-                text=f"Error calling {name}: {str(e)}",
-            )
-        ]
+        logger.error(f"Error calling tool {name} with arguments {arguments}: {e}", exc_info=True)
+        return [TextContent(type="text", text=f"Error calling {name}: {str(e)}")]
 
 
 @server.list_resources()

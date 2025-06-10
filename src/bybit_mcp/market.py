@@ -22,9 +22,11 @@ load_dotenv()
 
 BYBIT_API_KEY = os.getenv("BYBIT_API_KEY")
 BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET")
+# Use testnet if BYBIT_TESTNET is set to "true" or "1"
+USE_TESTNET = os.getenv("BYBIT_TESTNET", "false").lower() in ("true", "1")
 
 bybit_session = HTTP(
-    testnet=False,  # Set to False for production
+    testnet=USE_TESTNET,  # Updated to use USE_TESTNET
     api_key=BYBIT_API_KEY,
     api_secret=BYBIT_API_SECRET,
 )

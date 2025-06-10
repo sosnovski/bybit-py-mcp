@@ -7,12 +7,10 @@ services:
     environment:
       - BYBIT_API_KEY=${BYBIT_API_KEY}
       - BYBIT_API_SECRET=${BYBIT_API_SECRET}
+      - BYBIT_TESTNET=${BYBIT_TESTNET:-false}
+      - BYBIT_TRADING_ENABLED=${BYBIT_TRADING_ENABLED:-false}
     stdin_open: true
     tty: true
-    # For MCP stdio communication
     volumes:
       - /tmp:/tmp
     restart: unless-stopped
-    # Uncomment if you want to expose a port for HTTP-based MCP
-    # ports:
-    #   - "8000:8000"
