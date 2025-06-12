@@ -1,6 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class BaseApiResponse(BaseModel):
@@ -116,9 +116,17 @@ class TradeExecutionItem(BaseModel):
     underlyingPrice: Optional[str] = None  # Optional for option
     blockTradeId: Optional[str] = None
     closedSize: Optional[str] = None
-    seq: Optional[str] = None  # Optional based on classic account Spot
+    seq: Optional[Union[str, int]] = None  # Optional based on classic account Spot - API can return int or str
     extraFees: Optional[str] = None  # Optional based on conditions
     # Add other fields from documentation as needed
+
+    @field_validator("seq", mode="before")
+    @classmethod
+    def convert_seq_to_str(cls, v):
+        """Convert seq field from int to str if needed."""
+        if v is not None and isinstance(v, int):
+            return str(v)
+        return v
 
 
 class TradeHistoryResult(BaseModel):
@@ -192,3 +200,77 @@ class SpotBorrowQuotaResult(BaseModel):
 class SpotBorrowQuotaResponse(BaseApiResponse):
     result: SpotBorrowQuotaResult
     # Add other common response fields if necessary
+
+
+# Models for Wallet Balance
+class CoinBalance(BaseModel):
+    coin: str
+    equity: str
+    usdValue: str
+    walletBalance: str
+    borrowAmount: str
+    availableToBorrow: str
+    availableToWithdraw: str
+    accruedInterest: str
+    totalOrderIM: str
+    totalPositionIM: str
+    totalPositionMM: str
+    unrealisedPnl: str
+    cumRealisedPnl: str
+    bonus: str
+    collateralSwitch: bool
+    marginCollateral: bool
+    locked: str
+    spotHedgingQty: str
+
+
+class WalletBalance(BaseModel):
+    accountType: str
+    totalEquity: str
+    totalWalletBalance: str
+    totalMarginBalance: str
+    totalAvailableBalance: str
+    totalPerpUPL: str
+    totalInitialMargin: str
+    totalMaintenanceMargin: str
+    accountIMRate: str
+    accountMMRate: str
+    accountLTV: str
+    coin: List[CoinBalance]
+
+
+class WalletBalanceResult(BaseModel):
+    list: List[WalletBalance]
+
+
+class WalletBalanceResponse(BaseApiResponse):
+    result: WalletBalanceResult
+
+
+# Models for Single Coin Balance
+class SingleCoinBalanceResult(BaseModel):
+    accountType: str
+    bizType: int
+    accountId: str
+    memberId: str
+    balance: CoinBalance
+
+
+class SingleCoinBalanceResponse(BaseApiResponse):
+    result: SingleCoinBalanceResult
+
+
+# Models for Account Info
+class AccountInfo(BaseModel):
+    unifiedMarginStatus: int
+    marginMode: str
+    dcpStatus: str
+    timeWindow: int
+    smpGroup: int
+    isMasterTrader: bool
+    spotHedgingStatus: str
+    updatedTime: str
+
+
+class AccountInfoResponse(BaseApiResponse):
+    result: AccountInfo

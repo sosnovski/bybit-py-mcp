@@ -1,6 +1,6 @@
 # src/bybit_mcp/position.py
 import os
-from typing import Optional, Union
+from typing import Optional
 
 from dotenv import load_dotenv
 from pybit.unified_trading import HTTP
@@ -64,7 +64,7 @@ def set_leverage(
     symbol: str,
     buyLeverage: str,
     sellLeverage: str,
-) -> Union[SetLeverageResponse, dict]:
+) -> SetLeverageResponse:
     """Set leverage for a position."""
     if not TRADING_ENABLED:
         return _get_trading_disabled_response(SetLeverageResponse)
@@ -88,7 +88,7 @@ def switch_cross_isolated_margin(
     tradeMode: int,
     buyLeverage: str,
     sellLeverage: str,
-) -> Union[SwitchMarginModeResponse, dict]:
+) -> SwitchMarginModeResponse:
     """Switch between cross margin and isolated margin."""
     if not TRADING_ENABLED:
         return _get_trading_disabled_response(SwitchMarginModeResponse)
@@ -112,7 +112,7 @@ def switch_position_mode(
     symbol: Optional[str] = None,
     coin: Optional[str] = None,
     mode: int = 0,
-) -> Union[SwitchPositionModeResponse, dict]:
+) -> SwitchPositionModeResponse:
     """Switch position mode between one-way and hedge mode."""
     if not TRADING_ENABLED:
         return _get_trading_disabled_response(SwitchPositionModeResponse)
@@ -147,7 +147,7 @@ def set_trading_stop(
     slLimitPrice: Optional[str] = None,
     tpOrderType: Optional[str] = None,
     slOrderType: Optional[str] = None,
-) -> Union[SetTradingStopResponse, dict]:
+) -> SetTradingStopResponse:
     """Set trading stop for a position (take profit, stop loss)."""
     if not TRADING_ENABLED:
         return _get_trading_disabled_response(SetTradingStopResponse)
@@ -183,7 +183,7 @@ def set_auto_add_margin(
     symbol: str,
     autoAddMargin: int,
     positionIdx: Optional[int] = None,
-) -> Union[SetAutoAddMarginResponse, dict]:
+) -> SetAutoAddMarginResponse:
     """Set auto add margin for a position."""
     if not TRADING_ENABLED:
         return _get_trading_disabled_response(SetAutoAddMarginResponse)
@@ -207,7 +207,7 @@ def modify_position_margin(
     symbol: str,
     margin: str,
     positionIdx: Optional[int] = None,
-) -> Union[AddReduceMarginResponse, dict]:
+) -> AddReduceMarginResponse:
     """Add or reduce margin for isolated margin position"""
     if not TRADING_ENABLED:
         return _get_trading_disabled_response(AddReduceMarginResponse)

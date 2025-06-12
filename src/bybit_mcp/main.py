@@ -10,7 +10,7 @@ import json
 import logging
 from typing import Any, Dict, List
 
-from dotenv import load_dotenv  # Correctly placed
+from dotenv import load_dotenv
 from mcp.server import Server
 from mcp.server.lowlevel import NotificationOptions
 from mcp.server.models import InitializationOptions
@@ -39,6 +39,16 @@ from .market import (
     get_server_time,
     get_tickers,
 )
+from .position import (
+    get_closed_pnl,
+    get_position_info,
+    modify_position_margin,
+    set_auto_add_margin,
+    set_leverage,
+    set_trading_stop,
+    switch_cross_isolated_margin,
+    switch_position_mode,
+)
 
 # Import trade functions and TRADING_ENABLED flag
 from .trade import (
@@ -49,14 +59,17 @@ from .trade import (
     batch_place_order,
     cancel_all_orders,
     cancel_order,
+    get_account_info,
     get_open_closed_orders,
     get_order_history,
+    get_single_coin_balance,
     get_trade_history,
+    get_wallet_balance,
     place_order,
 )
 
-# Load environment variables from .env file
-load_dotenv()  # Call load_dotenv at the module level
+# Load environment variables from .env file for local development
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -718,9 +731,187 @@ async def handle_list_tools() -> List[Tool]:
                 "required": ["category"],
             },
         ),
+        Tool(
+            name="get_wallet_balance",
+            description="Get wallet balance information. Requires API keys.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "accountType": {
+                        "type": "string",
+                        "description": "Account type (e.g., UNIFIED, CONTRACT, SPOT, INVESTMENT, OPTION, FUND, COPYTRADING)",
+                    },
+                    "coin": {"type": "string", "description": "Coin name (optional, e.g., BTC, ETH, USDT)"},
+                },
+                "required": ["accountType"],
+            },
+        ),
+        Tool(
+            name="get_single_coin_balance",
+            description="Get single coin balance information. Requires API keys.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "accountType": {"type": "string", "description": "Account type (e.g., UNIFIED, CONTRACT, SPOT)"},
+                    "coin": {"type": "string", "description": "Coin name (e.g., BTC, ETH, USDT)"},
+                    "memberId": {"type": "string", "description": "Member ID (optional)"},
+                    "toAccountType": {"type": "string", "description": "Target account type (optional)"},
+                    "toMemberId": {"type": "string", "description": "Target member ID (optional)"},
+                    "withBonus": {"type": "integer", "description": "Whether to include bonus (optional, 0 or 1)"},
+                },
+                "required": ["accountType", "coin"],
+            },
+        ),
+        Tool(
+            name="get_account_info",
+            description="Get account information. Requires API keys.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
     ]
 
-    return market_tools + active_trade_tools + trade_info_tools  # Combined active_trade_tools
+    # Position Management Tools (read-only position info is always available)
+    position_tools = [
+        Tool(
+            name="get_position_info",
+            description="Get position information for a category/symbol.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Product category"},
+                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
+                    "baseCoin": {"type": "string", "description": "Base coin (optional)"},
+                    "settleCoin": {"type": "string", "description": "Settle coin (optional)"},
+                    "limit": {"type": "integer", "description": "Data limit (optional)"},
+                    "cursor": {"type": "string", "description": "Pagination cursor (optional)"},
+                },
+                "required": ["category"],
+            },
+        ),
+        Tool(
+            name="get_closed_pnl",
+            description="Get closed profit and loss information.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Product category"},
+                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
+                    "startTime": {"type": "integer", "description": "Start timestamp (optional)"},
+                    "endTime": {"type": "integer", "description": "End timestamp (optional)"},
+                    "limit": {"type": "integer", "description": "Data limit (optional)"},
+                    "cursor": {"type": "string", "description": "Pagination cursor (optional)"},
+                },
+                "required": ["category"],
+            },
+        ),
+    ]
+
+    # Position management tools that require trading to be enabled
+    active_position_tools = []
+    if TRADING_ENABLED:
+        active_position_tools.extend(
+            [
+                Tool(
+                    name="set_leverage",
+                    description="Set leverage for a position. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "symbol": {"type": "string", "description": "Symbol name"},
+                            "buyLeverage": {"type": "string", "description": "Buy leverage"},
+                            "sellLeverage": {"type": "string", "description": "Sell leverage"},
+                        },
+                        "required": ["category", "symbol", "buyLeverage", "sellLeverage"],
+                    },
+                ),
+                Tool(
+                    name="switch_cross_isolated_margin",
+                    description="Switch between cross and isolated margin mode. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "symbol": {"type": "string", "description": "Symbol name"},
+                            "tradeMode": {"type": "integer", "description": "Trade mode (0: cross margin, 1: isolated margin)"},
+                            "buyLeverage": {"type": "string", "description": "Buy leverage"},
+                            "sellLeverage": {"type": "string", "description": "Sell leverage"},
+                        },
+                        "required": ["category", "symbol", "tradeMode", "buyLeverage", "sellLeverage"],
+                    },
+                ),
+                Tool(
+                    name="switch_position_mode",
+                    description="Switch position mode between one-way and hedge mode. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "symbol": {"type": "string", "description": "Symbol name (optional for some categories)"},
+                            "coin": {"type": "string", "description": "Coin name (optional)"},
+                            "mode": {"type": "integer", "description": "Position mode (0: Merged Single, 3: Both Sides)"},
+                        },
+                        "required": ["category", "mode"],
+                    },
+                ),
+                Tool(
+                    name="set_trading_stop",
+                    description="Set trading stop (take profit/stop loss) for a position. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "symbol": {"type": "string", "description": "Symbol name"},
+                            "positionIdx": {"type": "integer", "description": "Position index"},
+                            "takeProfit": {"type": "string", "description": "Take profit price (optional)"},
+                            "stopLoss": {"type": "string", "description": "Stop loss price (optional)"},
+                            "tpTriggerBy": {"type": "string", "description": "Take profit trigger type (optional)"},
+                            "slTriggerBy": {"type": "string", "description": "Stop loss trigger type (optional)"},
+                            "tpslMode": {"type": "string", "description": "TP/SL mode (optional)"},
+                            "tpOrderType": {"type": "string", "description": "Take profit order type (optional)"},
+                            "slOrderType": {"type": "string", "description": "Stop loss order type (optional)"},
+                            "tpSize": {"type": "string", "description": "Take profit size (optional)"},
+                            "slSize": {"type": "string", "description": "Stop loss size (optional)"},
+                        },
+                        "required": ["category", "symbol", "positionIdx"],
+                    },
+                ),
+                Tool(
+                    name="set_auto_add_margin",
+                    description="Set auto add margin for a position. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "symbol": {"type": "string", "description": "Symbol name"},
+                            "autoAddMargin": {"type": "integer", "description": "Auto add margin (0: off, 1: on)"},
+                            "positionIdx": {"type": "integer", "description": "Position index (optional)"},
+                        },
+                        "required": ["category", "symbol", "autoAddMargin"],
+                    },
+                ),
+                Tool(
+                    name="modify_position_margin",
+                    description="Add or reduce position margin. Trading must be enabled.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Product category"},
+                            "symbol": {"type": "string", "description": "Symbol name"},
+                            "margin": {"type": "string", "description": "Margin amount"},
+                            "positionIdx": {"type": "integer", "description": "Position index (optional)"},
+                        },
+                        "required": ["category", "symbol", "margin"],
+                    },
+                ),
+            ]
+        )
+
+    # Combine all tools for final listing
+    return market_tools + active_trade_tools + trade_info_tools + position_tools + active_position_tools
 
 
 @server.call_tool()
@@ -738,24 +929,26 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
             ]
         elif name == "get_tickers":
             result = get_tickers(**arguments)
-            return [TextContent(type="text", text=f"Ticker data for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Ticker data for {result.category}:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "get_order_book":
             result = get_order_book(**arguments)
-            return [TextContent(type="text", text=f"Order book for {result.s}:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Order book for {result.s}:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "get_recent_trades":
             result = get_recent_trades(**arguments)
-            return [TextContent(type="text", text=f"Recent trades for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Recent trades for {result.category}:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "get_kline":
             result = get_kline(**arguments)
             return [
-                TextContent(type="text", text=f"Kline data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}")
+                TextContent(
+                    type="text", text=f"Kline data for {result.symbol} ({result.category}):\n{json.dumps(result.model_dump(), indent=2)}"
+                )
             ]
         elif name == "get_mark_price_kline":
             result = get_mark_price_kline(**arguments)
             return [
                 TextContent(
                     type="text",
-                    text=f"Mark price kline data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}",
+                    text=f"Mark price kline data for {result.symbol} ({result.category}):\n{json.dumps(result.model_dump(), indent=2)}",
                 )
             ]
         elif name == "get_index_price_kline":
@@ -763,7 +956,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
             return [
                 TextContent(
                     type="text",
-                    text=f"Index price kline data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}",
+                    text=f"Index price kline data for {result.symbol} ({result.category}):\n{json.dumps(result.model_dump(), indent=2)}",
                 )
             ]
         elif name == "get_premium_index_price_kline":
@@ -771,71 +964,108 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
             return [
                 TextContent(
                     type="text",
-                    text=f"Premium index price kline data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}",
+                    text=f"Premium index price kline data for {result.symbol} ({result.category}):\n"
+                    f"{json.dumps(result.model_dump(), indent=2)}",
                 )
             ]
         elif name == "get_instruments_info":
             result = get_instruments_info(**arguments)
-            return [TextContent(type="text", text=f"Instruments info for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Instruments info for {result.category}:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "get_funding_rate_history":
             result = get_funding_rate_history(**arguments)
-            return [TextContent(type="text", text=f"Funding rate history for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
+            return [
+                TextContent(type="text", text=f"Funding rate history for {result.category}:\n{json.dumps(result.model_dump(), indent=2)}")
+            ]
         elif name == "get_open_interest":
             result = get_open_interest(**arguments)
             return [
                 TextContent(
-                    type="text", text=f"Open interest data for {result.symbol} ({result.category}):\n{json.dumps(result.dict(), indent=2)}"
+                    type="text",
+                    text=f"Open interest data for {result.symbol} ({result.category}):\n{json.dumps(result.model_dump(), indent=2)}",
                 )
             ]
         elif name == "get_insurance":
             result = get_insurance(**arguments)
             return [
                 TextContent(
-                    type="text", text=f"Insurance fund data (updated: {result.updatedTime}):\n{json.dumps(result.dict(), indent=2)}"
+                    type="text", text=f"Insurance fund data (updated: {result.updatedTime}):\n{json.dumps(result.model_dump(), indent=2)}"
                 )
             ]
         elif name == "get_risk_limit":
             result = get_risk_limit(**arguments)
-            return [TextContent(type="text", text=f"Risk limit data for {result.category}:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Risk limit data for {result.category}:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "get_long_short_ratio":
             result = get_long_short_ratio(**arguments)
-            return [TextContent(type="text", text=f"Long/short ratio data:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Long/short ratio data:\n{json.dumps(result.model_dump(), indent=2)}")]
 
         # Trading Tools (TRADING_ENABLED check is now primarily within trade.py functions)
         # The tools are only listed if TRADING_ENABLED is true,
         # but the functions in trade.py provide a secondary check.
         elif name == "place_order":
             result = place_order(**arguments)
-            return [TextContent(type="text", text=f"Place Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Place Order Response:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "amend_order":
             result = amend_order(**arguments)
-            return [TextContent(type="text", text=f"Amend Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Amend Order Response:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "cancel_order":
             result = cancel_order(**arguments)
-            return [TextContent(type="text", text=f"Cancel Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Cancel Order Response:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "get_open_closed_orders":  # Read-only
             result = get_open_closed_orders(**arguments)
-            return [TextContent(type="text", text=f"Open/Closed Orders:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Open/Closed Orders:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "cancel_all_orders":
             result = cancel_all_orders(**arguments)
-            return [TextContent(type="text", text=f"Cancel All Orders Response:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Cancel All Orders Response:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "get_order_history":  # Read-only
             result = get_order_history(**arguments)
-            return [TextContent(type="text", text=f"Order History:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Order History:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "get_trade_history":  # Read-only
             result = get_trade_history(**arguments)
-            return [TextContent(type="text", text=f"Trade History:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Trade History:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "batch_place_order":
             result = batch_place_order(**arguments)
-            return [TextContent(type="text", text=f"Batch Place Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Batch Place Order Response:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "batch_amend_order":
             result = batch_amend_order(**arguments)
-            return [TextContent(type="text", text=f"Batch Amend Order Response:\n{json.dumps(result.dict(), indent=2)}")]
+            return [TextContent(type="text", text=f"Batch Amend Order Response:\n{json.dumps(result.model_dump(), indent=2)}")]
         elif name == "batch_cancel_order":
             result = batch_cancel_order(**arguments)
-            return [TextContent(type="text", text=f"Batch Cancel Order Response:\n{json.dumps(result.dict(), indent=2)}")]
-        # ... (add handlers for get_spot_borrow_quota and set_dcp if implemented) ...
-
+            return [TextContent(type="text", text=f"Batch Cancel Order Response:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "get_wallet_balance":
+            result = get_wallet_balance(**arguments)
+            return [TextContent(type="text", text=f"Wallet Balance:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "get_single_coin_balance":
+            result = get_single_coin_balance(**arguments)
+            return [TextContent(type="text", text=f"Single Coin Balance:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "get_account_info":
+            result = get_account_info(**arguments)
+            return [
+                TextContent(type="text", text=f"Account Information:\n{json.dumps(result.model_dump(), indent=2)}")
+            ]  # Position Management Tools
+        elif name == "get_position_info":
+            result = get_position_info(**arguments)
+            return [TextContent(type="text", text=f"Position Information:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "get_closed_pnl":
+            result = get_closed_pnl(**arguments)
+            return [TextContent(type="text", text=f"Closed P&L:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "set_leverage":
+            result = set_leverage(**arguments)
+            return [TextContent(type="text", text=f"Set Leverage Response:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "switch_cross_isolated_margin":
+            result = switch_cross_isolated_margin(**arguments)
+            return [TextContent(type="text", text=f"Switch Margin Mode Response:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "switch_position_mode":
+            result = switch_position_mode(**arguments)
+            return [TextContent(type="text", text=f"Switch Position Mode Response:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "set_trading_stop":
+            result = set_trading_stop(**arguments)
+            return [TextContent(type="text", text=f"Set Trading Stop Response:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "set_auto_add_margin":
+            result = set_auto_add_margin(**arguments)
+            return [TextContent(type="text", text=f"Set Auto Add Margin Response:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "modify_position_margin":
+            result = modify_position_margin(**arguments)
+            return [TextContent(type="text", text=f"Modify Position Margin Response:\n{json.dumps(result.model_dump(), indent=2)}")]
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
 

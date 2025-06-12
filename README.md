@@ -6,7 +6,13 @@
 > **Always test on testnet first (`BYBIT_TESTNET=true`) and understand the risks before enabling trading.**  
 > **Trading is DISABLED by default for safety.**
 
-A Model Context Protocol (MCP) server that provides access to Bybit's v5 Market API endpoints. This server enables AI assistants to fetch real-time market data, instrument information, and trading statistics from the Bybit cryptocurrency exchange.
+A comprehensive Model Context Protocol (MCP) server that provides full access to Bybit's v5 API. This server enables AI assistants to fetch real-time market data, execute trading operations, manage positions, and access account information from the Bybit cryptocurrency exchange.
+
+## 🚀 **Production Ready** 
+✅ **Fully Tested** - All endpoints tested and working  
+✅ **Docker Support** - Published image available at `falconiun/bybit-mcp`  
+✅ **VS Code Integration** - Ready-to-use configurations provided  
+✅ **Comprehensive API Coverage** - Market data, trading, positions, and account management
 
 ## Features
 
@@ -33,19 +39,48 @@ A Model Context Protocol (MCP) server that provides access to Bybit's v5 Market 
 - **Long/Short Ratio**: Access long/short ratio statistics
 
 ### Trading Operations (Requires `BYBIT_TRADING_ENABLED=true`)
-- **Order Management**: Place, amend, and cancel orders
-- **Batch Operations**: Execute multiple orders in a single request
-- **Order History**: View open/closed orders and trade history
+- **Order Management**: Place, amend, and cancel orders with full control
+- **Batch Operations**: Execute multiple orders in a single request for efficiency
+- **Order History**: View comprehensive open/closed orders and trade history
 - **Order Types**: Support for Market, Limit, and conditional orders
+- **Real-time Execution**: Get immediate feedback on order status and fills
 
 ### Position Management (Requires `BYBIT_TRADING_ENABLED=true`)
-- **Position Info**: Query real-time position data
-- **Leverage Control**: Set and modify position leverage
+- **Position Info**: Query real-time position data with detailed metrics
+- **Leverage Control**: Set and modify position leverage dynamically  
 - **Margin Management**: Switch between cross/isolated margin modes
 - **Trading Stops**: Set take profit, stop loss, and trailing stops
 - **Auto Add Margin**: Configure automatic margin addition
 - **Position Modes**: Switch between one-way and hedge position modes
 - **P&L Tracking**: Access closed profit and loss records
+
+### Account & Wallet Management
+- **Wallet Balance**: Get comprehensive wallet balance information
+- **Single Coin Balance**: Query specific coin balances
+- **Account Information**: Access detailed account information and settings
+- **Multiple Account Types**: Support for UNIFIED, CONTRACT, SPOT, INVESTMENT accounts
+
+## 🎯 Key Capabilities
+
+### ✅ Complete API Coverage
+- **Market Data**: All Bybit v5 market endpoints (tickers, order book, klines, funding rates, etc.)
+- **Trading**: Full order lifecycle management (place, amend, cancel, batch operations)
+- **Positions**: Complete position management (leverage, margin, stops, P&L tracking)
+- **Account**: Wallet balances, account info, and multi-account support
+
+### ✅ Production Features
+- **Safety First**: Trading disabled by default with explicit enablement required
+- **Testnet Support**: Full testnet integration for safe development and testing
+- **Error Handling**: Comprehensive error handling with detailed error messages
+- **Data Validation**: Pydantic models ensure data integrity and type safety
+- **Docker Ready**: Published Docker image with proper environment variable handling
+
+### ✅ Developer Experience  
+- **VS Code Integration**: Ready-to-use configurations for both local and Docker deployment
+- **MCP Protocol**: Full Model Context Protocol compliance for AI assistant integration
+- **Type Safety**: Complete TypeScript-style typing with Pydantic models
+- **Testing**: Comprehensive test suite with real API integration
+- **Documentation**: Extensive documentation with examples and best practices
 
 ## Supported Categories
 
@@ -60,7 +95,27 @@ A Model Context Protocol (MCP) server that provides access to Bybit's v5 Market 
 - Python 3.13+
 - [uv](https://docs.astral.sh/uv/) package manager
 
-### Using uv (Recommended)
+### Using uvx (Easiest - No Installation Required)
+
+Run directly from GitHub without cloning or installing:
+
+```bash
+# Set environment variables and run
+BYBIT_API_KEY=your_api_key BYBIT_API_SECRET=your_api_secret uvx --from git+https://github.com/your-username/bybit-mcp.git bybit-mcp
+```
+
+Or with all options:
+```bash
+BYBIT_API_KEY=your_api_key \
+BYBIT_API_SECRET=your_api_secret \
+BYBIT_TESTNET=false \
+BYBIT_TRADING_ENABLED=false \
+uvx --from git+https://github.com/your-username/bybit-mcp.git bybit-mcp
+```
+
+> **Note**: Replace `your-username/bybit-mcp` with the actual GitHub repository URL
+
+### Using uv (Recommended for Development)
 
 1. Clone the repository:
 ```bash
@@ -105,12 +160,12 @@ python -m bybit_mcp.main
 # Build the Docker image
 docker build -t bybit-mcp .
 
-# Run with environment variables
-docker run -i --rm \
+# Run with environment variables (correct syntax)
+docker run -i --rm --init \
   -e BYBIT_API_KEY=your_api_key \
   -e BYBIT_API_SECRET=your_api_secret \
-  -e BYBIT_TESTNET=false \  # Set to true for testnet
-  -e BYBIT_TRADING_ENABLED=false \  # Set to true to enable trading
+  -e BYBIT_TESTNET=false \
+  -e BYBIT_TRADING_ENABLED=false \
   bybit-mcp
 ```
 
@@ -119,6 +174,18 @@ docker run -i --rm \
 ```bash
 # Set environment variables in .env file first
 docker-compose up
+```
+
+### Using Published Image
+
+```bash
+# Use the published Docker image
+docker run -i --rm --init \
+  -e BYBIT_API_KEY=your_api_key \
+  -e BYBIT_API_SECRET=your_api_secret \
+  -e BYBIT_TESTNET=false \
+  -e BYBIT_TRADING_ENABLED=false \
+  falconiun/bybit-mcp
 ```
 
 ## Configuration
@@ -156,7 +223,113 @@ Ensure your Bybit API key has the appropriate permissions:
 - **Position**: Required for position management
 - **Withdraw**: Not required for this server
 
-### VS Code MCP Integration
+### MCP Client Integration
+
+#### Claude Desktop
+
+To use the Bybit MCP server with Claude Desktop, add the following configuration to your Claude Desktop MCP settings file:
+
+**Location of Claude Desktop MCP config:**
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+**Option 1: Using Published Docker Image (Recommended)**
+```json
+{
+  "mcpServers": {
+    "bybit-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--init",
+        "-e", "BYBIT_API_KEY=your_api_key_here",
+        "-e", "BYBIT_API_SECRET=your_api_secret_here",
+        "-e", "BYBIT_TESTNET=false",
+        "-e", "BYBIT_TRADING_ENABLED=false",
+        "falconiun/bybit-mcp"
+      ]
+    }
+  }
+}
+```
+
+**Option 2: Using uvx (No Installation Required)**
+```json
+{
+  "mcpServers": {
+    "bybit-mcp": {
+      "command": "uvx",
+      "args": [
+        "--from", "git+https://github.com/your-username/bybit-mcp.git",
+        "bybit-mcp"
+      ],
+      "env": {
+        "BYBIT_API_KEY": "your_api_key_here",
+        "BYBIT_API_SECRET": "your_api_secret_here",
+        "BYBIT_TESTNET": "false",
+        "BYBIT_TRADING_ENABLED": "false"
+      }
+    }
+  }
+}
+```
+
+**Option 3: Local Development**
+```json
+{
+  "mcpServers": {
+    "bybit-mcp": {
+      "command": "uv",
+      "args": ["run", "bybit-mcp"],
+      "cwd": "path/to/your/bybit-mcp",
+      "env": {
+        "BYBIT_API_KEY": "your_api_key_here",
+        "BYBIT_API_SECRET": "your_api_secret_here",
+        "BYBIT_TESTNET": "false",
+        "BYBIT_TRADING_ENABLED": "false"
+      }
+    }
+  }
+}
+```
+
+**Important Claude Desktop Notes:**
+- Replace `your_api_key_here` and `your_api_secret_here` with your actual Bybit API credentials
+- Set `BYBIT_TESTNET=true` for testing with fake money (recommended for first use)
+- Set `BYBIT_TRADING_ENABLED=true` only when you want to enable real trading operations
+- Restart Claude Desktop after modifying the configuration file
+
+**Claude Desktop Usage Examples:**
+
+Once configured, you can ask Claude Desktop questions like:
+- "What's my USDT balance?"
+- "What's the current price of BTCUSDT?"
+- "Show me the order book for ETHUSDT"
+- "Get me the recent trading history for my account"
+- "What positions do I currently have open?"
+
+For trading (when `BYBIT_TRADING_ENABLED=true`):
+- "Place a limit buy order for 0.001 BTC at $95,000"
+- "Cancel all my open orders"
+- "Set leverage to 10x for BTCUSDT"
+- "Set a stop loss at $90,000 for my BTC position"
+
+**Security Best Practices:**
+- Start with `BYBIT_TESTNET=true` to test functionality safely
+- Use API keys with minimal required permissions (read-only for market data, trade permissions only when needed)
+- Never share your configuration file containing API keys
+- Consider using environment variables for sensitive credentials in production
+
+#### Other MCP Clients
+
+This server works with any MCP-compatible client. The configuration format may vary slightly between clients, but the core setup remains the same:
+
+#### VS Code MCP Integration
+
+#### Option 1: Local Development (Recommended)
 
 Add to your VS Code settings.json:
 
@@ -167,12 +340,13 @@ Add to your VS Code settings.json:
       "bybit-mcp": {
         "type": "stdio",
         "command": "uv",
-        "args": ["run","-i", "bybit-mcp"],
+        "args": ["run", "bybit-mcp"],
+        "cwd": "path/to/bybit-mcp",
         "env": {
           "BYBIT_API_KEY": "${input:bybit_api_key}",
           "BYBIT_API_SECRET": "${input:bybit_api_secret}",
-          "BYBIT_TESTNET": "false",
-          "BYBIT_TRADING_ENABLED": "false"
+          "BYBIT_TESTNET": "${input:bybit_testnet}",
+          "BYBIT_TRADING_ENABLED": "${input:bybit_trading_enabled}"
         }
       }
     },
@@ -192,19 +366,91 @@ Add to your VS Code settings.json:
       {
         "type": "promptString",
         "id": "bybit_testnet",
-        "description": "Use Bybit Testnet (true/false)",
+        "description": "Use Bybit Testnet",
         "default": "false"
       },
       {
         "type": "promptString",
         "id": "bybit_trading_enabled",
-        "description": "Enable Trading Operations (true/false)",
+        "description": "Enable Bybit Trading",
         "default": "false"
       }
     ]
   }
 }
 ```
+
+#### Option 2: Docker (Production)
+
+For using the published Docker image:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "bybit-mcp": {
+        "type": "stdio",
+        "command": "docker",
+        "args": [
+          "run",
+          "-i",
+          "--rm",
+          "--init",
+          "-e",
+          "DOCKER_CONTAINER",
+          "-e",
+          "BYBIT_API_KEY",
+          "-e",
+          "BYBIT_API_SECRET",
+          "-e",
+          "BYBIT_TRADING_ENABLED",
+          "-e",
+          "BYBIT_TESTNET",
+          "falconiun/bybit-mcp"
+        ],
+        "env": {
+          "DOCKER_CONTAINER": "true",
+          "BYBIT_API_KEY": "${input:bybit_api_key}",
+          "BYBIT_API_SECRET": "${input:bybit_api_secret}",
+          "BYBIT_TRADING_ENABLED": "${input:bybit_trading_enabled}",
+          "BYBIT_TESTNET": "${input:bybit_testnet}"
+        }
+      }
+    },
+    "inputs": [
+      {
+        "type": "promptString",
+        "id": "bybit_api_key",
+        "description": "Bybit API Key",
+        "password": true
+      },
+      {
+        "type": "promptString",
+        "id": "bybit_api_secret",
+        "description": "Bybit API Secret",
+        "password": true
+      },
+      {
+        "type": "promptString",
+        "id": "bybit_testnet",
+        "description": "Use Bybit Testnet",
+        "default": "false"
+      },
+      {
+        "type": "promptString",
+        "id": "bybit_trading_enabled",
+        "description": "Enable Bybit Trading",
+        "default": "false"
+      }
+    ]
+  }
+}
+```
+
+**Important Docker Notes:**
+- The `-e` flags are required to pass environment variables to the Docker container
+- The `env` section sets the variables in VS Code's environment, which are then passed to Docker
+- The `--init` flag helps with proper signal handling in containers
 
 ## Testing
 
@@ -267,6 +513,11 @@ These tools are only available when trading is enabled via the `BYBIT_TRADING_EN
 - `get_open_closed_orders`: Get open and closed orders
 - `get_order_history`: Get order history
 - `get_trade_history`: Get trade execution history
+
+#### Wallet & Account Management
+- `get_wallet_balance`: Get comprehensive wallet balance information
+- `get_single_coin_balance`: Get balance for a specific cryptocurrency
+- `get_account_info`: Get detailed account information and settings
 
 ### Position Tools (Requires `BYBIT_TRADING_ENABLED=true`)
 
@@ -383,9 +634,76 @@ All tools support the following common parameters where applicable:
 }
 ```
 
+**Get Wallet Balance**
+```json
+{
+  "name": "get_wallet_balance",
+  "arguments": {
+    "accountType": "UNIFIED",
+    "coin": "USDT"
+  }
+}
+```
+
+**Get Single Coin Balance**
+```json
+{
+  "name": "get_single_coin_balance",
+  "arguments": {
+    "accountType": "UNIFIED",
+    "coin": "BTC"
+  }
+}
+```
+
+**Get Account Info**
+```json
+{
+  "name": "get_account_info",
+  "arguments": {}
+}
+```
+
 ### Resources
 
 - `bybit://market/info`: General information about available endpoints and capabilities
+
+## Troubleshooting
+
+### Common Issues
+
+#### Environment Variables Not Working in Docker
+- **Problem**: API keys not being passed to Docker container
+- **Solution**: Use the `-e` flag format shown in the Docker configuration above
+- **Note**: The `env` section in VS Code MCP settings sets variables in VS Code's environment, which are then passed to Docker via `-e` flags
+
+#### Pydantic Validation Errors
+- **Problem**: Data type mismatches (e.g., integers vs strings)
+- **Solution**: The server includes automatic type conversion for common API inconsistencies
+- **Example**: `seq` field in trade history is automatically converted from int to string
+
+#### Trading Operations Disabled
+- **Problem**: Trading tools not appearing or returning disabled errors
+- **Solution**: Set `BYBIT_TRADING_ENABLED=true` in your environment variables
+- **Safety**: This is intentional - trading is disabled by default for safety
+
+#### API Permission Errors
+- **Problem**: 401 Unauthorized or insufficient permissions
+- **Solution**: Verify your Bybit API key has the required permissions:
+  - Read-only: For market data (always safe)
+  - Trade: Required for order operations
+  - Position: Required for position management
+
+### Debug Mode
+
+Enable debug logging by setting the log level:
+```bash
+# Local development
+PYTHONPATH=src python -c "import logging; logging.basicConfig(level=logging.DEBUG)" -m bybit_mcp.main
+
+# Docker
+docker run -e PYTHONPATH=src -e LOG_LEVEL=DEBUG ...
+```
 
 ## Development
 
@@ -427,6 +745,18 @@ The project uses:
 - **Pytest**: For testing
 - **Pydantic**: For data validation
 - **Type hints**: For better code documentation
+
+### Recent Updates
+
+**v0.1.0 - Production Release**
+- ✅ Complete Bybit v5 API coverage (market data, trading, positions, accounts)
+- ✅ Docker image published to `falconiun/bybit-mcp`
+- ✅ Fixed Pydantic validation issues (seq field type conversion)
+- ✅ Comprehensive VS Code MCP integration with working Docker configuration
+- ✅ Enhanced error handling and safety controls
+- ✅ Full wallet and account management support
+- ✅ Testnet support for safe development
+- ✅ Production-ready with comprehensive testing
 
 ## License
 

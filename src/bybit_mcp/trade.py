@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import List, Type, TypeVar, Union  # Grouped TypeVar
 
@@ -5,6 +6,7 @@ from dotenv import load_dotenv
 from pybit.unified_trading import HTTP
 
 from bybit_mcp.models.trade_models import (
+    AccountInfoResponse,
     AmendOrderResponse,
     BaseApiResponse,  # For type hinting
     BatchAmendOrderResponse,
@@ -16,17 +18,28 @@ from bybit_mcp.models.trade_models import (
     OrderHistoryResponse,
     OrderItemResult,  # For constructing error results
     PlaceOrderResponse,
+    SingleCoinBalanceResponse,
     SpotBorrowQuotaResponse,  # Added SpotBorrowQuotaResponse
     TradeHistoryResponse,
+    WalletBalanceResponse,
 )
 
-# Load environment variables from .env file
+# Load environment variables from .env file for local development
 load_dotenv()
 
 BYBIT_API_KEY = os.getenv("BYBIT_API_KEY")
 BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET")
 USE_TESTNET = os.getenv("BYBIT_TESTNET", "false").lower() in ("true", "1")
 TRADING_ENABLED = os.getenv("BYBIT_TRADING_ENABLED", "false").lower() in ("true", "1")
+
+# Debug logging for environment variables
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info(f"BYBIT_API_KEY present: {bool(BYBIT_API_KEY)}")
+logger.info(f"BYBIT_API_SECRET present: {bool(BYBIT_API_SECRET)}")
+logger.info(f"USE_TESTNET: {USE_TESTNET}")
+logger.info(f"TRADING_ENABLED: {TRADING_ENABLED}")
 
 # Custom error code for trading disabled
 TRADING_DISABLED_RET_CODE = 40300
@@ -360,3 +373,60 @@ def get_spot_borrow_quota(
     if isinstance(response, tuple):
         response = response[0]
     return SpotBorrowQuotaResponse(**response)
+
+
+def get_wallet_balance(
+    accountType: str,
+    coin: Union[str, None] = None,
+) -> WalletBalanceResponse:
+    """Get wallet balance information."""
+    # This is a read-only endpoint, but since it shows balance information
+    # which is sensitive for trading, we'll require API keys but not TRADING_ENABLED
+    params = {
+        "accountType": accountType,
+    }
+    if coin:
+        params["coin"] = coin
+
+    response = bybit_session.get_wallet_balance(**params)
+    if isinstance(response, tuple):
+        response = response[0]
+    return WalletBalanceResponse(**response)
+
+
+def get_single_coin_balance(
+    accountType: str,
+    coin: str,
+    memberId: Union[str, None] = None,
+    toAccountType: Union[str, None] = None,
+    toMemberId: Union[str, None] = None,
+    withBonus: Union[int, None] = None,
+) -> SingleCoinBalanceResponse:
+    """Get single coin balance information."""
+    # This is a read-only endpoint, but shows balance information
+    params = {
+        "accountType": accountType,
+        "coin": coin,
+    }
+    for key, value in [
+        ("memberId", memberId),
+        ("toAccountType", toAccountType),
+        ("toMemberId", toMemberId),
+        ("withBonus", withBonus),
+    ]:
+        if value is not None:
+            params[key] = value
+
+    response = bybit_session.get_coin_balance(**params)
+    if isinstance(response, tuple):
+        response = response[0]
+    return SingleCoinBalanceResponse(**response)
+
+
+def get_account_info() -> AccountInfoResponse:
+    """Get account information."""
+    # This is a read-only endpoint
+    response = bybit_session.get_account_info()
+    if isinstance(response, tuple):
+        response = response[0]
+    return AccountInfoResponse(**response)
