@@ -1,0 +1,34 @@
+# Smithery configuration file: https://smithery.ai/docs/build/project-config
+
+startCommand:
+  type: stdio
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({ command: 'uv', args: ['run', 'bybit-mcp'], env: { BYBIT_API_KEY: config.bybitApiKey, BYBIT_API_SECRET: config.bybitApiSecret, BYBIT_TESTNET: config.bybitTestnet.toString(), BYBIT_TRADING_ENABLED: config.bybitTradingEnabled.toString(), }, })
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - bybitApiKey
+      - bybitApiSecret
+    properties:
+      bybitApiKey:
+        type: string
+        description: Bybit API Key
+      bybitApiSecret:
+        type: string
+        description: Bybit API Secret
+      bybitTestnet:
+        type: boolean
+        default: false
+        description: Use Bybit Testnet
+      bybitTradingEnabled:
+        type: boolean
+        default: false
+        description: Enable Bybit Trading
+  exampleConfig:
+    bybitApiKey: YOUR_BYBIT_API_KEY
+    bybitApiSecret: YOUR_BYBIT_API_SECRET
+    bybitTestnet: false
+    bybitTradingEnabled: false
