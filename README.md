@@ -1,5 +1,6 @@
 # Bybit MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@BCusack/bybit-full-mcp)](https://smithery.ai/server/@BCusack/bybit-full-mcp)
 > ⚠️ **TRADING WARNING** ⚠️  
 > **This MCP server can execute REAL TRADING OPERATIONS on Bybit when `BYBIT_TRADING_ENABLED=true`.**  
 > **Trading operations use REAL MONEY and can result in FINANCIAL LOSSES.**  
@@ -90,6 +91,14 @@ A comprehensive Model Context Protocol (MCP) server that provides full access to
 - **Spot**: Spot trading pairs
 
 ## Installation
+
+### Installing via Smithery
+
+To install bybit-full-mcp for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@BCusack/bybit-full-mcp):
+
+```bash
+npx -y @smithery/cli install @BCusack/bybit-full-mcp --client claude
+```
 
 ### Prerequisites
 - Python 3.13+
