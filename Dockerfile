@@ -5,21 +5,26 @@ FROM python:3.13-slim
 # Set working directory
 WORKDIR /app
 
-# Install uv for faster Python package management
-RUN pip install uv
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir uv
 
-# Copy all necessary files for the build
-COPY . ./
+# Copy project files
+COPY pyproject.toml ./
+COPY uv.lock* ./
 
-# Install dependencies using uv with the virtual environment
-RUN uv sync --frozen
+# Install dependencies
+RUN uv sync --frozen --no-dev || uv sync --no-dev
 
-# Set environment variables for the MCP server
+# Copy source code
+COPY src/ ./src/
+
+# Set environment variables
 ENV PYTHONPATH=/app/src
 ENV PYTHONUNBUFFERED=1
 
-# Expose port if needed (though MCP typically uses stdio)
-EXPOSE 8000
-
-# Default command to run the MCP server using uv run
-CMD ["uv", "run", "python", "-m", "bybit_mcp.main"]
+# Default command
+CMD ["uv", "run", "bybit-mcp"]
