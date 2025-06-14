@@ -1,34 +1,202 @@
-# Smithery configuration file: https://smithery.ai/docs/build/project-config
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
+name: Bybit Trading MCP
+description: A Model Context Protocol (MCP) server for Bybit cryptocurrency exchange. Provides comprehensive access to Bybit's trading API including market data, position management, order execution, and account information. Features both testnet and live trading capabilities with robust security controls.
+license: MIT
+version: 1.0.0
+author: Bybit MCP Team
+repository: https://github.com/your-repo/bybit-mcp
+
+# Documentation sections
+documentation:
+  overview: |
+    This MCP server provides comprehensive integration with the Bybit cryptocurrency exchange platform.
+    It enables LLMs to access real-time market data, manage trading positions, execute orders, and monitor account information.
+    The server supports both testnet and live trading environments with configurable safety controls.
+    
+    Key capabilities:
+    - Real-time market data and price feeds
+    - Order management (place, modify, cancel orders)
+    - Position and portfolio tracking
+    - Account balance and margin monitoring
+    - Risk management tools
+    - Historical data access
+  
+  installation: |
+    ### Prerequisites
+    - Python 3.8 or higher
+    - UV package manager
+    - Bybit API credentials
+    
+    ### Installation
+    ```bash
+    git clone https://github.com/your-repo/bybit-mcp.git
+    cd bybit-mcp
+    uv install
+    ```
+    
+    ### Configuration
+    Add the Bybit MCP server to your Claude Desktop configuration:
+    ```json
+    {
+      "mcpServers": {
+        "bybit-trading": {
+          "command": "uv",
+          "args": ["run", "bybit-mcp"],
+          "env": {
+            "BYBIT_API_KEY": "your-api-key",
+            "BYBIT_API_SECRET": "your-api-secret",
+            "BYBIT_TESTNET": "false",
+            "BYBIT_TRADING_ENABLED": "false"
+          }
+        }
+      }
+    }
+    ```
+  
+  usage: |
+    The Bybit MCP server provides access to comprehensive trading and market data tools:
+    
+    **Market Data Tools:**
+    - `get_tickers`: Get real-time price information
+    - `get_kline`: Access candlestick/OHLC data
+    - `get_order_book`: View order book depth
+    - `get_recent_trades`: Recent trade history
+    
+    **Account Management:**
+    - `get_wallet_balance`: Check account balances
+    - `get_position_info`: View open positions
+    - `get_account_info`: Account details and status
+    
+    **Trading Tools (when enabled):**
+    - `place_order`: Execute buy/sell orders
+    - `cancel_order`: Cancel existing orders
+    - `modify_position_margin`: Adjust position margins
+    - `set_leverage`: Configure trading leverage
+    
+    **Safety Features:**
+    - Testnet support for safe testing
+    - Trading controls (disabled by default)
+    - Rate limiting and error handling
+    - Comprehensive logging
+    
+    Example system prompt:
+    ```
+    You are a cryptocurrency trading assistant with access to the Bybit exchange.
+    
+    TRADING PROTOCOL:
+    - Always check account balance before suggesting trades
+    - Use testnet for learning and experimentation
+    - Verify market conditions before order placement
+    - Monitor positions and risk levels continuously
+    - Respect user's risk tolerance and trading limits
+    
+    SAFETY GUIDELINES:
+    - Never execute trades without explicit user confirmation
+    - Always display current positions and balances
+    - Warn about market risks and volatility
+    - Suggest appropriate position sizing
+    - Use stop-losses and risk management tools
+    ```
+
+# Build configuration
+build:
+  dockerfile: Dockerfile
+  dockerBuildPath: .
+
+# Preview configuration
+preview:
+  defaultCommand: uv run bybit-mcp
+  examples:
+    - title: Get Account Balance
+      description: Check your current wallet balance across all assets
+      input: |
+        {"accountType": "UNIFIED"}
+      output: |
+        {"totalEquity": "1000.00", "totalWalletBalance": "1000.00", "coin": [{"coin": "USDT", "walletBalance": "1000.00"}]}
+    
+    - title: Get Market Ticker
+      description: Retrieve real-time price data for a trading pair
+      input: |
+        {"category": "linear", "symbol": "BTCUSDT"}
+      output: |
+        {"symbol": "BTCUSDT", "lastPrice": "45000.00", "bid1Price": "44999.50", "ask1Price": "45000.50", "volume24h": "12345.67"}
+    
+    - title: Place Limit Order (Trading Enabled)
+      description: Execute a limit buy order for Bitcoin
+      input: |
+        {"category": "linear", "symbol": "BTCUSDT", "side": "Buy", "orderType": "Limit", "qty": "0.001", "price": "44000.00"}
+      output: |
+        {"orderId": "1234567890", "orderLinkId": "user-order-001", "symbol": "BTCUSDT", "status": "New"}
+
+# Tools configuration for display
+tools:
+  - name: get_wallet_balance
+    description: Get account wallet balance information for specified account type
+    example: |
+      {"accountType": "UNIFIED", "coin": "USDT"}
+    
+  - name: get_tickers
+    description: Get ticker information including current prices, volumes, and 24h statistics
+    example: |
+      {"category": "linear", "symbol": "BTCUSDT"}
+  
+  - name: get_position_info
+    description: Get information about current trading positions
+    example: |
+      {"category": "linear", "symbol": "BTCUSDT"}
+  
+  - name: place_order
+    description: Place a new trading order (requires trading to be enabled)
+    example: |
+      {"category": "linear", "symbol": "BTCUSDT", "side": "Buy", "orderType": "Market", "qty": "0.001"}
+  
+  - name: get_kline
+    description: Get candlestick/OHLC data for technical analysis
+    example: |
+      {"category": "linear", "symbol": "BTCUSDT", "interval": "1h", "limit": 100}
+
+# Start command configuration  
 startCommand:
   type: stdio
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
-    (config) => ({ command: 'uv', args: ['run', 'bybit-mcp'], env: { BYBIT_API_KEY: config.bybitApiKey, BYBIT_API_SECRET: config.bybitApiSecret, BYBIT_TESTNET: config.bybitTestnet.toString(), BYBIT_TRADING_ENABLED: config.bybitTradingEnabled.toString(), }, })
+    (config) => ({ 
+      command: 'uv', 
+      args: ['run', 'bybit-mcp'], 
+      env: { 
+        BYBIT_API_KEY: config.bybitApiKey, 
+        BYBIT_API_SECRET: config.bybitApiSecret, 
+        BYBIT_TESTNET: config.bybitTestnet.toString(), 
+        BYBIT_TRADING_ENABLED: config.bybitTradingEnabled.toString() 
+      } 
+    })
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
     required:
       - bybitApiKey
-      - bybitApiSecret
+      - bybitApiSecret    
     properties:
       bybitApiKey:
         type: string
-        description: Bybit API Key
+        description: Bybit API Key (get from Bybit API Management)
+        format: password
       bybitApiSecret:
         type: string
-        description: Bybit API Secret
+        description: Bybit API Secret (keep secure and private)
+        format: password
       bybitTestnet:
         type: boolean
         default: false
-        description: Use Bybit Testnet
+        description: Use Bybit Testnet for safe testing (recommended for beginners)
       bybitTradingEnabled:
         type: boolean
         default: false
-        description: Enable Bybit Trading
+        description: Enable live trading capabilities (requires explicit activation)
   exampleConfig:
     bybitApiKey: YOUR_BYBIT_API_KEY
     bybitApiSecret: YOUR_BYBIT_API_SECRET
-    bybitTestnet: false
+    bybitTestnet: true
     bybitTradingEnabled: false
