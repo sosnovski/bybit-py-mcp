@@ -41,10 +41,11 @@ A comprehensive Model Context Protocol (MCP) server that provides full access to
 
 ### Trading Operations (Requires `BYBIT_TRADING_ENABLED=true`)
 - **Order Management**: Place, amend, and cancel orders with full control
+- **Advanced Order Types**: Support for Market, Limit, and conditional/trigger orders
 - **Batch Operations**: Execute multiple orders in a single request for efficiency
 - **Order History**: View comprehensive open/closed orders and trade history
-- **Order Types**: Support for Market, Limit, and conditional orders
 - **Real-time Execution**: Get immediate feedback on order status and fills
+- **Trigger Orders**: Conditional orders with price triggers and advanced stop/take profit logic
 
 ### Position Management (Requires `BYBIT_TRADING_ENABLED=true`)
 - **Position Info**: Query real-time position data with detailed metrics
@@ -66,8 +67,16 @@ A comprehensive Model Context Protocol (MCP) server that provides full access to
 ### ✅ Complete API Coverage
 - **Market Data**: All Bybit v5 market endpoints (tickers, order book, klines, funding rates, etc.)
 - **Trading**: Full order lifecycle management (place, amend, cancel, batch operations)
+- **Advanced Orders**: Conditional/trigger orders with sophisticated entry and exit strategies  
 - **Positions**: Complete position management (leverage, margin, stops, P&L tracking)
 - **Account**: Wallet balances, account info, and multi-account support
+
+### ✅ Agent-Optimized Design
+- **Clear Tool Descriptions**: Each tool has detailed, agent-friendly descriptions explaining purpose and usage
+- **Rich Parameter Schemas**: Comprehensive JSON schemas with examples, enums, and validation constraints
+- **Safety Warnings**: Important trading tools include prominent safety warnings and risk notices
+- **Usage Guidance**: Tools include context about when and how to use them effectively
+- **Error Prevention**: Schema validation prevents common parameter mistakes before API calls
 
 ### ✅ Production Features
 - **Safety First**: Trading disabled by default with explicit enablement required
@@ -508,10 +517,11 @@ All market data tools are always available and do not require special permission
 These tools are only available when trading is enabled via the `BYBIT_TRADING_ENABLED` environment variable.
 
 #### Order Management
-- `place_order`: Place a new order (Market, Limit, etc.)
-- `amend_order`: Modify an existing order
-- `cancel_order`: Cancel a specific order
-- `cancel_all_orders`: Cancel all open orders
+- `place_order`: Place standard orders (Market, Limit) for immediate or specified price execution
+- `place_trigger_order`: Place conditional/trigger orders with advanced stop-loss, take-profit, and market entry strategies
+- `amend_order`: Modify existing pending orders (price, quantity, or trigger conditions)
+- `cancel_order`: Cancel a specific pending order
+- `cancel_all_orders`: Cancel all open orders for enhanced risk management
 
 #### Batch Operations
 - `batch_place_order`: Place multiple orders in one request
@@ -601,6 +611,24 @@ All tools support the following common parameters where applicable:
     "qty": "0.001",
     "price": "50000.00",
     "orderLinkId": "my-order-123"
+  }
+}
+```
+
+**Place Trigger Order (Requires Trading Enabled)**
+```json
+{
+  "name": "place_trigger_order",
+  "arguments": {
+    "category": "linear",
+    "symbol": "BTCUSDT",
+    "side": "Buy",
+    "orderType": "Market",
+    "qty": "0.001",
+    "triggerPrice": "48000.00",
+    "triggerDirection": 2,
+    "triggerBy": "LastPrice",
+    "orderLinkId": "trigger-buy-123"
   }
 }
 ```

@@ -66,6 +66,7 @@ from .trade import (
     get_trade_history,
     get_wallet_balance,
     place_order,
+    place_trigger_order,
 )
 
 # Load environment variables from .env file for local development
@@ -94,30 +95,33 @@ async def handle_list_tools() -> List[Tool]:
         ),
         Tool(
             name="get_tickers",
-            description="Get ticker information for trading symbols",
+            description="Get real-time ticker information including current prices, 24h volume, and price changes for trading symbols. Use this to get current market data for any cryptocurrency pair.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "category": {
                         "type": "string",
-                        "description": "Product type (linear, inverse, option, spot)",
+                        "description": "Product type: 'linear' for USDT perpetuals (most common), 'inverse' for coin-margined futures, 'option' for options, 'spot' for spot trading",
                         "enum": ["linear", "inverse", "option", "spot"],
                         "default": "linear",
                     },
                     "symbol": {
                         "type": "string",
-                        "description": "Symbol name (e.g., BTCUSDT)",
+                        "description": "Trading pair symbol. Examples: 'BTCUSDT' (Bitcoin), 'ETHUSDT' (Ethereum), 'SOLUSDT' (Solana). Leave empty to get all symbols.",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT"]
                     },
                     "baseCoin": {
                         "type": "string",
-                        "description": "Base coin (for option only)",
+                        "description": "Base coin for options only. Examples: 'BTC', 'ETH'",
+                        "examples": ["BTC", "ETH"]
                     },
                     "expDate": {
                         "type": "string",
-                        "description": "Expiry date (for option only, format: 25DEC21)",
-                    },
-                },
-                "required": [],
+                        "description": "Expiry date for options only. Format: DDMMMYY (e.g., '25DEC21', '30JUN22')",
+                        "pattern": "^[0-9]{2}[A-Z]{3}[0-9]{2}$",
+                        "examples": ["25DEC21", "30JUN22", "31MAR23"]
+                    }, },
+                "required": []
             },
         ),
         Tool(
@@ -178,170 +182,166 @@ async def handle_list_tools() -> List[Tool]:
                         "minimum": 1,
                         "maximum": 1000,
                         "default": 500,
-                    },
-                },
+                    }, },
                 "required": ["symbol"],
             },
         ),
         Tool(
             name="get_kline",
-            description="Get candlestick/kline data for a symbol",
+            description="Get historical candlestick/OHLC data for technical analysis. Returns open, high, low, close prices and volume data. If no time range specified, returns recent data ending at current time.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "category": {
                         "type": "string",
-                        "description": "Product type",
+                        "description": "Product type: 'linear' for USDT perpetuals (most common), 'inverse' for coin-margined futures, 'option' for options, 'spot' for spot trading",
                         "enum": ["linear", "inverse", "option", "spot"],
                         "default": "linear",
                     },
                     "symbol": {
                         "type": "string",
-                        "description": "Symbol name (e.g., BTCUSDT)",
+                        "description": "Trading pair symbol. Examples: 'BTCUSDT', 'ETHUSDT', 'SOLUSDT'",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
                     },
                     "interval": {
                         "type": "string",
-                        "description": "Kline interval",
+                        "description": "Time interval for each candlestick. Minutes: '1', '3', '5', '15', '30', '60' (1h), '120' (2h), '240' (4h), '360' (6h), '720' (12h). Periods: 'D' (daily), 'W' (weekly), 'M' (monthly)",
                         "enum": ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "M", "W"],
                         "default": "D",
                     },
                     "start": {
                         "type": "integer",
-                        "description": "Start timestamp (ms)",
+                        "description": "Start time in milliseconds timestamp (OPTIONAL). If not provided, returns recent data. This is the OLDEST time point you want (furthest back in time). Example: 1640995200000 for Jan 1, 2022",
                     },
                     "end": {
                         "type": "integer",
-                        "description": "End timestamp (ms)",
+                        "description": "End time in milliseconds timestamp (OPTIONAL). If not provided, defaults to current time. This is the NEWEST time point you want (most recent). Must be after start time.",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Limit for data size per page (1-1000)",
+                        "description": "Maximum number of candlesticks to return (OPTIONAL). Range: 1-1000. If not specified, API will use a reasonable default based on the interval.",
                         "minimum": 1,
                         "maximum": 1000,
-                        "default": 200,
-                    },
-                },
+                    }, },
                 "required": ["symbol"],
             },
         ),
         Tool(
             name="get_mark_price_kline",
-            description="Get mark price kline data",
+            description="Get mark price candlestick data for derivatives trading. Mark price is used for liquidation calculations and PnL. Available for linear and inverse perpetual contracts only.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "category": {
                         "type": "string",
-                        "description": "Product type",
+                        "description": "Product type: 'linear' for USDT perpetuals, 'inverse' for coin-margined futures",
                         "enum": ["linear", "inverse"],
                         "default": "linear",
                     },
                     "symbol": {
                         "type": "string",
-                        "description": "Symbol name (e.g., BTCUSDT)",
+                        "description": "Trading pair symbol. Examples: 'BTCUSDT', 'ETHUSDT'",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
                     },
                     "interval": {
                         "type": "string",
-                        "description": "Kline interval",
+                        "description": "Time interval for each candlestick. Minutes: '1', '3', '5', '15', '30', '60' (1h), '120' (2h), '240' (4h), '360' (6h), '720' (12h). Periods: 'D' (daily), 'W' (weekly), 'M' (monthly)",
                         "enum": ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "M", "W"],
                         "default": "D",
                     },
                     "start": {
                         "type": "integer",
-                        "description": "Start timestamp (ms)",
+                        "description": "Start time in milliseconds timestamp (OPTIONAL). The OLDEST time point (furthest back). If not provided, returns recent data.",
                     },
                     "end": {
                         "type": "integer",
-                        "description": "End timestamp (ms)",
+                        "description": "End time in milliseconds timestamp (OPTIONAL). The NEWEST time point (most recent). If not provided, defaults to current time.",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Limit for data size per page (1-1000)",
+                        "description": "Maximum number of candlesticks to return (OPTIONAL). Range: 1-1000.",
                         "minimum": 1,
                         "maximum": 1000,
-                        "default": 200,
-                    },
-                },
+                    }, },
                 "required": ["symbol"],
             },
         ),
         Tool(
             name="get_index_price_kline",
-            description="Get index price kline data",
+            description="Get index price candlestick data for derivatives. Index price is the fair value price based on major spot exchanges, used as reference for mark price calculation.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "category": {
                         "type": "string",
-                        "description": "Product type",
+                        "description": "Product type: 'linear' for USDT perpetuals, 'inverse' for coin-margined futures",
                         "enum": ["linear", "inverse"],
                         "default": "linear",
                     },
                     "symbol": {
                         "type": "string",
-                        "description": "Symbol name (e.g., BTCUSDT)",
+                        "description": "Trading pair symbol. Examples: 'BTCUSDT', 'ETHUSDT'",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
                     },
                     "interval": {
                         "type": "string",
-                        "description": "Kline interval",
+                        "description": "Time interval for each candlestick. Minutes: '1', '3', '5', '15', '30', '60' (1h), '120' (2h), '240' (4h), '360' (6h), '720' (12h). Periods: 'D' (daily), 'W' (weekly), 'M' (monthly)",
                         "enum": ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "M", "W"],
                         "default": "D",
                     },
                     "start": {
                         "type": "integer",
-                        "description": "Start timestamp (ms)",
+                        "description": "Start time in milliseconds timestamp (OPTIONAL). The OLDEST time point (furthest back). If not provided, returns recent data.",
                     },
                     "end": {
                         "type": "integer",
-                        "description": "End timestamp (ms)",
+                        "description": "End time in milliseconds timestamp (OPTIONAL). The NEWEST time point (most recent). If not provided, defaults to current time.",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Limit for data size per page (1-1000)",
+                        "description": "Maximum number of candlesticks to return (OPTIONAL). Range: 1-1000.",
                         "minimum": 1,
                         "maximum": 1000,
-                        "default": 200,
-                    },
-                },
+                    }, },
                 "required": ["symbol"],
             },
         ),
         Tool(
             name="get_premium_index_price_kline",
-            description="Get premium index price kline data",
+            description="Get premium index price candlestick data for linear perpetuals. Premium index shows the funding rate basis and is used to calculate funding payments.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "category": {
                         "type": "string",
-                        "description": "Product type",
+                        "description": "Product type: only 'linear' (USDT perpetuals) supported",
                         "enum": ["linear"],
                         "default": "linear",
                     },
                     "symbol": {
                         "type": "string",
-                        "description": "Symbol name (e.g., BTCUSDT)",
+                        "description": "Trading pair symbol. Examples: 'BTCUSDT', 'ETHUSDT'",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
                     },
                     "interval": {
                         "type": "string",
-                        "description": "Kline interval",
+                        "description": "Time interval for each candlestick. Minutes: '1', '3', '5', '15', '30', '60' (1h), '120' (2h), '240' (4h), '360' (6h), '720' (12h). Periods: 'D' (daily), 'W' (weekly), 'M' (monthly)",
                         "enum": ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "M", "W"],
                         "default": "D",
                     },
                     "start": {
                         "type": "integer",
-                        "description": "Start timestamp (ms)",
+                        "description": "Start time in milliseconds timestamp (OPTIONAL). The OLDEST time point (furthest back). If not provided, returns recent data.",
                     },
                     "end": {
                         "type": "integer",
-                        "description": "End timestamp (ms)",
+                        "description": "End time in milliseconds timestamp (OPTIONAL). The NEWEST time point (most recent). If not provided, defaults to current time.",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Limit for data size per page (1-1000)",
+                        "description": "Maximum number of candlesticks to return (OPTIONAL). Range: 1-1000.",
                         "minimum": 1,
                         "maximum": 1000,
-                        "default": 200,
                     },
                 },
                 "required": ["symbol"],
@@ -542,371 +542,958 @@ async def handle_list_tools() -> List[Tool]:
     active_trade_tools = []
     if TRADING_ENABLED:
         active_trade_tools.extend(
-            [
-                Tool(
-                    name="place_order",
-                    description="Place a new order. Trading must be enabled.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "category": {"type": "string", "description": "Product category (linear, spot, option, inverse)"},
-                            "symbol": {"type": "string", "description": "Symbol name (e.g., BTCUSDT)"},
-                            "side": {"type": "string", "description": "Buy or Sell"},
-                            "orderType": {"type": "string", "description": "Market or Limit"},
-                            "qty": {"type": "string", "description": "Order quantity"},
-                            "price": {"type": "string", "description": "Order price (for Limit orders)"},
-                            "isLeverage": {"type": "integer", "description": "Whether to use leverage (spot margin)"},
-                            "orderLinkId": {"type": "string", "description": "User-defined order ID"},
+            [Tool(
+                name="place_order",
+                description="Place a new trading order on Bybit. ⚠️ EXECUTES REAL TRADES WITH REAL MONEY when trading is enabled. This is the primary tool for buying and selling cryptocurrencies. Always confirm symbol, side, quantity, and price before executing. Market orders execute immediately at current price, Limit orders wait for your specified price.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                            "category": {
+                                "type": "string",
+                                "description": "Product category: 'linear' for USDT perpetuals (most common), 'spot' for spot trading, 'option' for options, 'inverse' for coin-margined futures",
+                                "enum": ["linear", "spot", "option", "inverse"],
+                                "default": "linear"
+                            },
+                        "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol. Examples: 'BTCUSDT', 'ETHUSDT', 'SOLUSDT'",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT"]
                         },
-                        "required": ["category", "symbol", "side", "orderType", "qty"],
-                    },
-                ),
-                Tool(
-                    name="amend_order",
-                    description="Amend an existing order. Trading must be enabled.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "category": {"type": "string", "description": "Product category"},
-                            "symbol": {"type": "string", "description": "Symbol name"},
-                            "orderId": {"type": "string", "description": "Order ID (either orderId or orderLinkId required)"},
-                            "orderLinkId": {"type": "string", "description": "User-defined order ID"},
-                            "qty": {"type": "string", "description": "New quantity"},
-                            "price": {"type": "string", "description": "New price"},
-                            # Add other amendable parameters from trade.py
+                        "side": {
+                                "type": "string",
+                                "description": "Order side: 'Buy' to purchase, 'Sell' to sell",
+                                "enum": ["Buy", "Sell"]
                         },
-                        "required": ["category", "symbol"],
-                    },
-                ),
-                Tool(
-                    name="cancel_order",
-                    description="Cancel an existing order. Trading must be enabled.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "category": {"type": "string", "description": "Product category"},
-                            "symbol": {"type": "string", "description": "Symbol name"},
-                            "orderId": {"type": "string", "description": "Order ID (either orderId or orderLinkId required)"},
-                            "orderLinkId": {"type": "string", "description": "User-defined order ID"},
+                        "orderType": {
+                                "type": "string",
+                                "description": "Order type: 'Market' executes immediately at current price, 'Limit' waits for specific price",
+                                "enum": ["Market", "Limit"]
                         },
-                        "required": ["category", "symbol"],
+                        "qty": {
+                                "type": "string",
+                                "description": "Order quantity. For spot: coin amount (e.g., '0.001' BTC). For derivatives: contract size (e.g., '100' USDT)",
+                                "examples": ["0.001", "100", "1.5", "0.1"]
+                        },
+                        "price": {
+                                "type": "string",
+                                "description": "Order price. Required for Limit orders, ignored for Market orders. Examples: '50000', '3000.5'",
+                                "examples": ["50000", "3000.5", "0.001", "100.25"]
+                        },
+                        "isLeverage": {
+                                "type": "integer",
+                                "description": "Use leverage for spot margin trading: 0 = normal spot, 1 = use leverage (spot margin only)",
+                                "enum": [0, 1],
+                                "default": 0
+                        },
+                        "orderLinkId": {
+                                "type": "string",
+                                "description": "Custom order ID for tracking. Must be unique. Use for order management and identification",
+                                "examples": ["myorder123", "trade_2024_001", "bot_order_456"]
+                        }
                     },
-                ),
+                    "required": ["category", "symbol", "side", "orderType", "qty"]
+                }
+            ),                Tool(
+                name="amend_order",
+                description="Modify an existing pending order's price or quantity. ⚠️ Only works on orders that haven't been filled yet. Use this to adjust your order without canceling and re-placing it, which saves on fees and maintains your position in the order queue. You must provide either orderId or orderLinkId to identify the order.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                            "category": {
+                                "type": "string",
+                                "description": "Product category where the order exists",
+                                "enum": ["linear", "spot", "option", "inverse"]
+                            },
+                        "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol of the order to amend. Examples: 'BTCUSDT', 'ETHUSDT'",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                            },
+                        "orderId": {
+                                "type": "string",
+                                "description": "Bybit's order ID. Either orderId or orderLinkId must be provided. Get this from order placement response or order history",
+                                "examples": ["1234567890123456", "9876543210987654"]
+                            },
+                        "orderLinkId": {
+                                "type": "string",
+                                "description": "Your custom order ID. Either orderId or orderLinkId must be provided. This is what you set when placing the order",
+                                "examples": ["myorder123", "trade_2024_001", "bot_order_456"]
+                            },
+                        "qty": {
+                                "type": "string",
+                                "description": "New order quantity. Leave empty if only changing price. Examples: '0.002', '150'",
+                                "examples": ["0.002", "150", "1.5", "0.5"]
+                            },
+                        "price": {
+                                "type": "string",
+                                "description": "New order price. Leave empty if only changing quantity. Examples: '51000', '3100.5'",
+                                "examples": ["51000", "3100.5", "0.002", "105.75"]
+                            }
+                    },
+                    "required": ["category", "symbol"]
+                }
+            ),                Tool(
+                name="cancel_order",
+                description="Cancel a single pending order immediately. ⚠️ Only works on orders that haven't been filled yet. Once an order is filled/executed, it cannot be cancelled. Use this to remove unwanted pending orders from the order book. You must provide either orderId or orderLinkId to identify the specific order to cancel.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                            "category": {
+                                "type": "string",
+                                "description": "Product category where the order exists",
+                                "enum": ["linear", "spot", "option", "inverse"]
+                            },
+                        "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol of the order to cancel. Examples: 'BTCUSDT', 'ETHUSDT'",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT"]
+                        },
+                        "orderId": {
+                                "type": "string",
+                                "description": "Bybit's order ID. Either orderId or orderLinkId must be provided. Get this from order placement response or order history",
+                                "examples": ["1234567890123456", "9876543210987654"]
+                        },
+                        "orderLinkId": {
+                                "type": "string",
+                                "description": "Your custom order ID. Either orderId or orderLinkId must be provided. This is what you set when placing the order",
+                                "examples": ["myorder123", "trade_2024_001", "bot_order_456"]
+                        }
+                    },
+                    "required": ["category", "symbol"]
+                }
+            ),
                 Tool(
                     name="cancel_all_orders",
-                    description="Cancel all open orders for a category/symbol. Trading must be enabled.",
+                    description="Cancel all pending orders for a category or specific symbol. Use with caution as this cancels ALL open orders matching the criteria.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
-                            "symbol": {"type": "string", "description": "Symbol name (optional)"},
-                            "baseCoin": {"type": "string", "description": "Base coin (optional)"},
-                            "settleCoin": {"type": "string", "description": "Settle coin (optional)"},
-                            "orderFilter": {"type": "string", "description": "Order filter (e.g., Order, StopOrder) (optional)"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category to cancel orders in",
+                                "enum": ["linear", "spot", "option", "inverse"]
+                            },
+                            "symbol": {
+                                "type": "string",
+                                "description": "Specific trading pair to cancel orders for. Leave empty to cancel ALL orders in the category",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                            },
+                            "baseCoin": {
+                                "type": "string",
+                                "description": "Base coin filter for options and derivatives. Examples: 'BTC', 'ETH'",
+                                "examples": ["BTC", "ETH", "SOL"]
+                            },
+                            "settleCoin": {
+                                "type": "string",
+                                "description": "Settlement coin filter. Examples: 'USDT', 'BTC', 'ETH'",
+                                "examples": ["USDT", "BTC", "ETH"]
+                            },
+                            "orderFilter": {
+                                "type": "string",
+                                "description": "Order type filter: 'Order' for normal orders, 'StopOrder' for conditional orders",
+                                "enum": ["Order", "StopOrder"]
+                            }
                         },
-                        "required": ["category"],
-                    },
-                ),
-                Tool(
+                        "required": ["category"]
+                    }
+            ),                Tool(
                     name="batch_place_order",
-                    description="Place a batch of new orders. Trading must be enabled.",
+                    description="Place multiple orders in a single request. More efficient than placing orders individually. All orders must be in the same category.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category for all orders in the batch",
+                                "enum": ["linear", "spot", "option", "inverse"]
+                            },
                             "request": {
                                 "type": "array",
-                                "description": "List of order creation requests",
+                                "description": "Array of order objects to place. Maximum 20 orders per batch",
+                                "maxItems": 20,
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "symbol": {"type": "string"},
-                                        "side": {"type": "string"},
-                                        "orderType": {"type": "string"},
-                                        "qty": {"type": "string"},
-                                        "price": {"type": "string"},
-                                        "orderLinkId": {"type": "string"},
-                                        # Add other relevant batch place order item fields
+                                        "symbol": {
+                                            "type": "string",
+                                            "description": "Trading pair symbol",
+                                            "examples": ["BTCUSDT", "ETHUSDT"]
+                                        },
+                                        "side": {
+                                            "type": "string",
+                                            "description": "Order side",
+                                            "enum": ["Buy", "Sell"]
+                                        },
+                                        "orderType": {
+                                            "type": "string",
+                                            "description": "Order type",
+                                            "enum": ["Market", "Limit"]
+                                        },
+                                        "qty": {
+                                            "type": "string",
+                                            "description": "Order quantity",
+                                            "examples": ["0.001", "100"]
+                                        },
+                                        "price": {
+                                            "type": "string",
+                                            "description": "Order price (required for Limit orders)",
+                                            "examples": ["50000", "3000.5"]
+                                        },
+                                        "orderLinkId": {
+                                            "type": "string",
+                                            "description": "Custom order ID for tracking",
+                                            "examples": ["batch_order_1", "trade_001"]
+                                        }
                                     },
-                                    "required": ["symbol", "side", "orderType", "qty"],
-                                },
-                            },
+                                    "required": ["symbol", "side", "orderType", "qty"]
+                                }
+                            }
                         },
-                        "required": ["category", "request"],
-                    },
-                ),
-                Tool(
+                        "required": ["category", "request"]
+                    }
+            ),                Tool(
                     name="batch_amend_order",
-                    description="Amend a batch of existing orders. Trading must be enabled.",
+                    description="Modify multiple existing orders in a single request. More efficient than amending orders individually. All orders must be in the same category.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category for all orders in the batch",
+                                "enum": ["linear", "spot", "option", "inverse"]
+                            },
                             "request": {
                                 "type": "array",
-                                "description": "List of order amendment requests",
+                                "description": "Array of order amendment objects. Maximum 20 orders per batch",
+                                "maxItems": 20,
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "symbol": {"type": "string"},
-                                        "orderId": {"type": "string"},
-                                        "orderLinkId": {"type": "string"},
-                                        "qty": {"type": "string"},
-                                        "price": {"type": "string"},
-                                        # Add other relevant batch amend order item fields
+                                        "symbol": {
+                                            "type": "string",
+                                            "description": "Trading pair symbol",
+                                            "examples": ["BTCUSDT", "ETHUSDT"]
+                                        },
+                                        "orderId": {
+                                            "type": "string",
+                                            "description": "Bybit's order ID (use either orderId or orderLinkId)",
+                                            "examples": ["1234567890123456"]
+                                        },
+                                        "orderLinkId": {
+                                            "type": "string",
+                                            "description": "Your custom order ID (use either orderId or orderLinkId)",
+                                            "examples": ["myorder123", "trade_001"]
+                                        },
+                                        "qty": {
+                                            "type": "string",
+                                            "description": "New order quantity (optional)",
+                                            "examples": ["0.002", "150"]
+                                        },
+                                        "price": {
+                                            "type": "string",
+                                            "description": "New order price (optional)",
+                                            "examples": ["51000", "3100.5"]
+                                        }
                                     },
-                                    "required": ["symbol"],  # orderId or orderLinkId also effectively required per item
-                                },
-                            },
+                                    "required": ["symbol"]
+                                }
+                            }
                         },
-                        "required": ["category", "request"],
-                    },
-                ),
-                Tool(
+                        "required": ["category", "request"]
+                    }
+            ),                Tool(
                     name="batch_cancel_order",
-                    description="Cancel a batch of existing orders. Trading must be enabled.",
+                    description="Cancel multiple existing orders in a single request. More efficient than canceling orders individually. All orders must be in the same category.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category for all orders in the batch",
+                                "enum": ["linear", "spot", "option", "inverse"]
+                            },
                             "request": {
                                 "type": "array",
-                                "description": "List of order cancellation requests",
+                                "description": "Array of order cancellation objects. Maximum 20 orders per batch",
+                                "maxItems": 20,
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "symbol": {"type": "string"},
-                                        "orderId": {"type": "string"},
-                                        "orderLinkId": {"type": "string"},
-                                        # Add other relevant batch cancel order item fields
+                                        "symbol": {
+                                            "type": "string",
+                                            "description": "Trading pair symbol for the order to cancel",
+                                            "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                                        },
+                                        "orderId": {
+                                            "type": "string",
+                                            "description": "Bybit's order ID (use either orderId or orderLinkId)",
+                                            "examples": ["1234567890123456", "9876543210987654"]
+                                        },
+                                        "orderLinkId": {
+                                            "type": "string",
+                                            "description": "Your custom order ID (use either orderId or orderLinkId)",
+                                            "examples": ["myorder123", "trade_2024_001", "bot_order_456"]
+                                        }
                                     },
-                                    "required": ["symbol"],  # orderId or orderLinkId also effectively required per item
-                                },
-                            },
+                                    "required": ["symbol"]
+                                }
+                            }
                         },
-                        "required": ["category", "request"],
-                    },
-                ),
+                        "required": ["category", "request"]
+                    }
+            ),
+                Tool(
+                    name="place_trigger_order",
+                    description="Place a conditional/trigger order that executes only when market price reaches your trigger condition. ⚠️ EXECUTES REAL TRADES WITH REAL MONEY when triggered. These orders wait for a specific price level before becoming active. The order doesn't occupy margin until triggered. Perfect for stop-loss, take-profit, and breakout strategies.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "category": {
+                                "type": "string",
+                                "description": "Product category: 'linear' for USDT perpetuals, 'spot' for spot trading, 'inverse' for coin-margined futures. Options not supported for trigger orders",
+                                "enum": ["linear", "spot", "inverse"]
+                            },
+                            "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol. Examples: 'BTCUSDT', 'ETHUSDT', 'SOLUSDT'",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT"]
+                            },
+                            "side": {
+                                "type": "string",
+                                "description": "Order side: 'Buy' to purchase when triggered, 'Sell' to sell when triggered",
+                                "enum": ["Buy", "Sell"]
+                            },
+                            "orderType": {
+                                "type": "string",
+                                "description": "Order type after trigger: 'Market' executes at market price when triggered, 'Limit' waits for your limit price after trigger",
+                                "enum": ["Market", "Limit"]
+                            },
+                            "qty": {
+                                "type": "string",
+                                "description": "Order quantity when triggered. For spot: coin amount (e.g., '0.001' BTC). For derivatives: contract size (e.g., '100' USDT)",
+                                "examples": ["0.001", "100", "1.5", "0.1"]
+                            },
+                            "triggerPrice": {
+                                "type": "string",
+                                "description": "Price that triggers the conditional order. When market hits this price, your order becomes active. Examples: '52000', '2900'",
+                                "examples": ["52000", "2900", "0.002", "105.50"]
+                            },
+                            "triggerDirection": {
+                                "type": "integer",
+                                "description": "Trigger direction: 1 = triggered when price RISES to triggerPrice (for buy-stop/sell-limit breakouts), 2 = triggered when price FALLS to triggerPrice (for stop-loss/buy-limit dips)",
+                                "enum": [1, 2]
+                            },
+                            "triggerBy": {
+                                "type": "string",
+                                "description": "Price type for trigger: 'LastPrice' = last traded price (default), 'MarkPrice' = mark price (recommended for derivatives), 'IndexPrice' = index price",
+                                "enum": ["LastPrice", "MarkPrice", "IndexPrice"],
+                                "default": "LastPrice"
+                            },
+                            "price": {
+                                "type": "string",
+                                "description": "Order price after trigger (for Limit orders only). Leave empty for Market orders. Examples: '52500', '2950'",
+                                "examples": ["52500", "2950", "0.0021", "106.25"]
+                            },
+                            "orderFilter": {
+                                "type": "string",
+                                "description": "Order filter for spot: 'Order' = normal conditional order, 'StopOrder' = stop order (assets not reserved until trigger), 'tpslOrder' = TP/SL order (assets reserved)",
+                                "enum": ["Order", "StopOrder", "tpslOrder"],
+                                "default": "StopOrder"
+                            },
+                            "timeInForce": {
+                                "type": "string",
+                                "description": "Time in force after trigger: 'GTC' = Good Till Cancelled, 'IOC' = Immediate or Cancel, 'FOK' = Fill or Kill, 'PostOnly' = Post Only",
+                                "enum": ["GTC", "IOC", "FOK", "PostOnly"],
+                                "default": "GTC"
+                            },
+                            "reduceOnly": {
+                                "type": "boolean",
+                                "description": "Reduce only flag: true = can only reduce position size (for closing positions), false = can increase position. Use true for stop-loss orders"
+                            },
+                            "closeOnTrigger": {
+                                "type": "boolean",
+                                "description": "Close on trigger: true = ensures order executes even with insufficient margin by canceling other orders if needed. Useful for guaranteed stop-losses"
+                            },
+                            "positionIdx": {
+                                "type": "integer",
+                                "description": "Position index for hedge mode: 0 = one-way mode, 1 = hedge-mode Buy side, 2 = hedge-mode Sell side",
+                                "enum": [0, 1, 2],
+                                "default": 0
+                            },
+                            "orderLinkId": {
+                                "type": "string",
+                                "description": "Custom order ID for tracking. Must be unique. Use for order management and identification",
+                                "examples": ["trigger_stop_123", "breakout_order_001", "sl_order_456"]
+                            }
+                        },
+                        "required": ["category", "symbol", "side", "orderType", "qty", "triggerPrice", "triggerDirection"]
+                    }
+            ),
             ]
-        )
-
-    # These are read-only and can always be listed
+        )    # These are read-only and can always be listed
     trade_info_tools = [
         Tool(
             name="get_open_closed_orders",
-            description="Get open and closed orders for a category/symbol.",
+            description="Get both open (pending) and recently closed orders. Essential for monitoring order status and trading activity. Use this to check if orders are filled, cancelled, or still pending.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string", "description": "Product category"},
-                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
-                    # Add other params like baseCoin, orderId, limit, cursor
+                    "category": {
+                        "type": "string",
+                        "description": "Product category to query orders for",
+                        "enum": ["linear", "spot", "option", "inverse"]
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "description": "Specific trading pair to get orders for. Leave empty to get all orders in category",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                    },
+                    "baseCoin": {
+                        "type": "string",
+                        "description": "Base coin filter for derivatives and options",
+                        "examples": ["BTC", "ETH", "SOL"]
+                    },
+                    "orderId": {
+                        "type": "string",
+                        "description": "Specific order ID to query",
+                        "examples": ["1234567890123456"]
+                    },
+                    "orderLinkId": {
+                        "type": "string",
+                        "description": "Specific custom order ID to query",
+                        "examples": ["myorder123", "trade_2024_001"]
+                    },
+                    "openOnly": {
+                        "type": "integer",
+                        "description": "Filter by open orders only: 0 = all orders, 1 = open orders only, 2 = closed orders only",
+                        "enum": [0, 1, 2]
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of records to return (1-50)",
+                        "minimum": 1,
+                        "maximum": 50,
+                        "default": 20
+                    },
+                    "cursor": {
+                        "type": "string",
+                        "description": "Pagination cursor for next page of results"
+                    }
                 },
-                "required": ["category"],
-            },
+                "required": ["category"]
+            }
         ),
         Tool(
             name="get_order_history",
-            description="Get order history for a category/symbol.",
+            description="Get comprehensive order history with detailed information about past orders including execution details, timestamps, and status changes. Useful for trade analysis and record keeping.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string", "description": "Product category"},
-                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
-                    # Add other params like orderStatus, startTime, endTime, limit
+                    "category": {
+                        "type": "string",
+                        "description": "Product category to query order history for",
+                        "enum": ["linear", "spot", "option", "inverse"]
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "description": "Specific trading pair to get order history for. Leave empty to get all orders in category",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                    },
+                    "baseCoin": {
+                        "type": "string",
+                        "description": "Base coin filter for derivatives and options",
+                        "examples": ["BTC", "ETH", "SOL"]
+                    },
+                    "orderId": {
+                        "type": "string",
+                        "description": "Specific order ID to query",
+                        "examples": ["1234567890123456"]
+                    },
+                    "orderLinkId": {
+                        "type": "string",
+                        "description": "Specific custom order ID to query",
+                        "examples": ["myorder123", "trade_2024_001"]
+                    },
+                    "orderStatus": {
+                        "type": "string",
+                        "description": "Filter by order status",
+                        "enum": ["New", "PartiallyFilled", "Filled", "Cancelled", "Rejected", "PartiallyFilledCanceled", "Deactivated"]
+                    },
+                    "orderFilter": {
+                        "type": "string",
+                        "description": "Order type filter",
+                        "enum": ["Order", "StopOrder", "tpslOrder", "OcoOrder", "BidirectionalTpslOrder"]
+                    },
+                    "startTime": {
+                        "type": "integer",
+                        "description": "Start timestamp in milliseconds for history query",
+                        "examples": [1640995200000, 1672531200000]
+                    },
+                    "endTime": {
+                        "type": "integer",
+                        "description": "End timestamp in milliseconds for history query",
+                        "examples": [1640995200000, 1672531200000]
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of records to return (1-50)",
+                        "minimum": 1,
+                        "maximum": 50,
+                        "default": 20
+                    },
+                    "cursor": {
+                        "type": "string",
+                        "description": "Pagination cursor for next page of results"
+                    }
                 },
-                "required": ["category"],
-            },
+                "required": ["category"]
+            }
         ),
         Tool(
             name="get_trade_history",
-            description="Get trade history (executions) for a category/symbol.",
+            description="Get detailed execution history showing actual trades (fills) with execution prices, quantities, fees, and timestamps. Essential for performance analysis and tax reporting.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string", "description": "Product category"},
-                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
-                    # Add other params like execType, limit, startTime, endTime
+                    "category": {
+                        "type": "string",
+                        "description": "Product category to query trade executions for",
+                        "enum": ["linear", "spot", "option", "inverse"]
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "description": "Specific trading pair to get trade history for. Leave empty to get all trades in category",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                    },
+                    "baseCoin": {
+                        "type": "string",
+                        "description": "Base coin filter for derivatives and options",
+                        "examples": ["BTC", "ETH", "SOL"]
+                    },
+                    "orderId": {
+                        "type": "string",
+                        "description": "Get trades for specific order ID",
+                        "examples": ["1234567890123456"]
+                    },
+                    "orderLinkId": {
+                        "type": "string",
+                        "description": "Get trades for specific custom order ID",
+                        "examples": ["myorder123", "trade_2024_001"]
+                    },
+                    "execType": {
+                        "type": "string",
+                        "description": "Execution type filter",
+                        "enum": ["Trade", "AdlTrade", "Funding", "BustTrade", "Settle"]
+                    },
+                    "startTime": {
+                        "type": "integer",
+                        "description": "Start timestamp in milliseconds for trade history query",
+                        "examples": [1640995200000, 1672531200000]
+                    },
+                    "endTime": {
+                        "type": "integer",
+                        "description": "End timestamp in milliseconds for trade history query",
+                        "examples": [1640995200000, 1672531200000]
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of records to return (1-100)",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "default": 50
+                    },
+                    "cursor": {
+                        "type": "string",
+                        "description": "Pagination cursor for next page of results"
+                    }
                 },
-                "required": ["category"],
-            },
+                "required": ["category"]
+            }
         ),
         Tool(
             name="get_wallet_balance",
-            description="Get wallet balance information. Requires API keys.",
+            description="Get detailed wallet balance information including available balance, locked balance, and total equity across different account types. Essential for portfolio monitoring and risk management.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "accountType": {
                         "type": "string",
-                        "description": "Account type (e.g., UNIFIED, CONTRACT, SPOT, INVESTMENT, OPTION, FUND, COPYTRADING)",
+                        "description": "Account type to query balance for. UNIFIED is most common for modern trading",
+                        "enum": ["UNIFIED", "CONTRACT", "SPOT", "INVESTMENT", "OPTION", "FUND", "COPYTRADING"],
+                        "examples": ["UNIFIED", "SPOT", "CONTRACT"]
                     },
-                    "coin": {"type": "string", "description": "Coin name (optional, e.g., BTC, ETH, USDT)"},
+                    "coin": {
+                        "type": "string",
+                        "description": "Specific coin to get balance for. Leave empty to get all coin balances",
+                        "examples": ["BTC", "ETH", "USDT", "SOL", "ADA"]
+                    }
                 },
-                "required": ["accountType"],
-            },
+                "required": ["accountType"]
+            }
         ),
         Tool(
             name="get_single_coin_balance",
-            description="Get single coin balance information. Requires API keys.",
+            description="Get balance information for a specific coin with additional details like transferable amounts and account relationships. More detailed than wallet balance for single coin queries.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "accountType": {"type": "string", "description": "Account type (e.g., UNIFIED, CONTRACT, SPOT)"},
-                    "coin": {"type": "string", "description": "Coin name (e.g., BTC, ETH, USDT)"},
-                    "memberId": {"type": "string", "description": "Member ID (optional)"},
-                    "toAccountType": {"type": "string", "description": "Target account type (optional)"},
-                    "toMemberId": {"type": "string", "description": "Target member ID (optional)"},
-                    "withBonus": {"type": "integer", "description": "Whether to include bonus (optional, 0 or 1)"},
+                    "accountType": {
+                        "type": "string",
+                        "description": "Account type to query coin balance for",
+                        "enum": ["UNIFIED", "CONTRACT", "SPOT"],
+                        "examples": ["UNIFIED", "SPOT", "CONTRACT"]
+                    },
+                    "coin": {
+                        "type": "string",
+                        "description": "Specific coin to get detailed balance for",
+                        "examples": ["BTC", "ETH", "USDT", "SOL", "ADA"]
+                    },
+                    "memberId": {
+                        "type": "string",
+                        "description": "Member ID for institutional accounts (optional)"
+                    },
+                    "toAccountType": {
+                        "type": "string",
+                        "description": "Target account type for transfer queries (optional)",
+                        "enum": ["UNIFIED", "CONTRACT", "SPOT"]
+                    },
+                    "toMemberId": {
+                        "type": "string",
+                        "description": "Target member ID for institutional transfers (optional)"
+                    },
+                    "withBonus": {
+                        "type": "integer",
+                        "description": "Include bonus balance in results: 0 = exclude bonus, 1 = include bonus",
+                        "enum": [0, 1],
+                        "default": 0
+                    }
                 },
-                "required": ["accountType", "coin"],
-            },
+                "required": ["accountType", "coin"]
+            }
         ),
         Tool(
             name="get_account_info",
-            description="Get account information. Requires API keys.",
+            description="Get comprehensive account information including margin ratios, account status, upgrade status, and overall account health metrics. Essential for risk monitoring.",
             inputSchema={
                 "type": "object",
                 "properties": {},
-                "required": [],
-            },
-        ),
-    ]
-
-    # Position Management Tools (read-only position info is always available)
+                "required": []
+            }
+        )
+    ]  # Position Management Tools (read-only position info is always available)
     position_tools = [
         Tool(
             name="get_position_info",
-            description="Get position information for a category/symbol.",
+            description="Get detailed position information including size, value, PnL, and margin for your trading positions. Essential for portfolio monitoring and risk management.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string", "description": "Product category"},
-                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
-                    "baseCoin": {"type": "string", "description": "Base coin (optional)"},
-                    "settleCoin": {"type": "string", "description": "Settle coin (optional)"},
-                    "limit": {"type": "integer", "description": "Data limit (optional)"},
-                    "cursor": {"type": "string", "description": "Pagination cursor (optional)"},
+                    "category": {
+                        "type": "string",
+                        "description": "Product category to query positions for",
+                        "enum": ["linear", "spot", "option", "inverse"]
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "description": "Specific trading pair to get position for. Leave empty to get all positions in category",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                    },
+                    "baseCoin": {
+                        "type": "string",
+                        "description": "Base coin filter for derivatives and options",
+                        "examples": ["BTC", "ETH", "SOL"]
+                    },
+                    "settleCoin": {
+                        "type": "string",
+                        "description": "Settlement coin filter",
+                        "examples": ["USDT", "BTC", "ETH"]
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of records to return (1-200)",
+                        "minimum": 1,
+                        "maximum": 200,
+                        "default": 20
+                    },
+                    "cursor": {
+                        "type": "string",
+                        "description": "Pagination cursor for next page of results"
+                    }
                 },
-                "required": ["category"],
-            },
+                "required": ["category"]
+            }
         ),
         Tool(
             name="get_closed_pnl",
-            description="Get closed profit and loss information.",
+            description="Get historical profit and loss data for closed positions. Useful for performance analysis and tax reporting.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string", "description": "Product category"},
-                    "symbol": {"type": "string", "description": "Symbol name (optional)"},
-                    "startTime": {"type": "integer", "description": "Start timestamp (optional)"},
-                    "endTime": {"type": "integer", "description": "End timestamp (optional)"},
-                    "limit": {"type": "integer", "description": "Data limit (optional)"},
-                    "cursor": {"type": "string", "description": "Pagination cursor (optional)"},
+                    "category": {
+                        "type": "string",
+                        "description": "Product category to query closed PnL for",
+                        "enum": ["linear", "spot", "option", "inverse"]
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "description": "Specific trading pair to get PnL for. Leave empty to get all closed PnL in category",
+                        "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                    },
+                    "startTime": {
+                        "type": "integer",
+                        "description": "Start timestamp in milliseconds for PnL query",
+                        "examples": [1640995200000, 1672531200000]
+                    },
+                    "endTime": {
+                        "type": "integer",
+                        "description": "End timestamp in milliseconds for PnL query",
+                        "examples": [1640995200000, 1672531200000]
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of records to return (1-100)",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "default": 20
+                    },
+                    "cursor": {
+                        "type": "string",
+                        "description": "Pagination cursor for next page of results"
+                    }
                 },
-                "required": ["category"],
-            },
-        ),
-    ]
-
-    # Position management tools that require trading to be enabled
+                "required": ["category"]
+            }
+        )
+    ]    # Position management tools that require trading to be enabled
     active_position_tools = []
     if TRADING_ENABLED:
         active_position_tools.extend(
             [
                 Tool(
                     name="set_leverage",
-                    description="Set leverage for a position. Trading must be enabled.",
+                    description="Set leverage for a trading position. Higher leverage amplifies both profits and losses. Use with caution as it increases risk significantly.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
-                            "symbol": {"type": "string", "description": "Symbol name"},
-                            "buyLeverage": {"type": "string", "description": "Buy leverage"},
-                            "sellLeverage": {"type": "string", "description": "Sell leverage"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category to set leverage for",
+                                "enum": ["linear", "inverse", "option"]
+                            },
+                            "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol to set leverage for",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                            },
+                            "buyLeverage": {
+                                "type": "string",
+                                "description": "Leverage for long positions. Range depends on symbol (e.g., 1-100x)",
+                                "examples": ["1", "5", "10", "25", "50", "100"]
+                            },
+                            "sellLeverage": {
+                                "type": "string",
+                                "description": "Leverage for short positions. Range depends on symbol (e.g., 1-100x)",
+                                "examples": ["1", "5", "10", "25", "50", "100"]
+                            }
                         },
-                        "required": ["category", "symbol", "buyLeverage", "sellLeverage"],
-                    },
+                        "required": ["category", "symbol", "buyLeverage", "sellLeverage"]
+                    }
                 ),
                 Tool(
                     name="switch_cross_isolated_margin",
-                    description="Switch between cross and isolated margin mode. Trading must be enabled.",
+                    description="Switch between cross margin (uses entire account balance as collateral) and isolated margin (uses only position margin). Cross margin has lower liquidation risk but affects entire account.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
-                            "symbol": {"type": "string", "description": "Symbol name"},
-                            "tradeMode": {"type": "integer", "description": "Trade mode (0: cross margin, 1: isolated margin)"},
-                            "buyLeverage": {"type": "string", "description": "Buy leverage"},
-                            "sellLeverage": {"type": "string", "description": "Sell leverage"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category to change margin mode for",
+                                "enum": ["linear", "inverse"]
+                            },
+                            "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol to change margin mode for",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                            },
+                            "tradeMode": {
+                                "type": "integer",
+                                "description": "Margin mode: 0 = cross margin (shared account balance), 1 = isolated margin (separate position margin)",
+                                "enum": [0, 1]
+                            },
+                            "buyLeverage": {
+                                "type": "string",
+                                "description": "Leverage for long positions after mode switch",
+                                "examples": ["1", "5", "10", "25", "50"]
+                            },
+                            "sellLeverage": {
+                                "type": "string",
+                                "description": "Leverage for short positions after mode switch",
+                                "examples": ["1", "5", "10", "25", "50"]
+                            }
                         },
-                        "required": ["category", "symbol", "tradeMode", "buyLeverage", "sellLeverage"],
-                    },
+                        "required": ["category", "symbol", "tradeMode", "buyLeverage", "sellLeverage"]
+                    }
                 ),
                 Tool(
                     name="switch_position_mode",
-                    description="Switch position mode between one-way and hedge mode. Trading must be enabled.",
+                    description="Switch between one-way mode (net position) and hedge mode (separate long/short positions). Hedge mode allows simultaneous long and short positions on the same symbol.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
-                            "symbol": {"type": "string", "description": "Symbol name (optional for some categories)"},
-                            "coin": {"type": "string", "description": "Coin name (optional)"},
-                            "mode": {"type": "integer", "description": "Position mode (0: Merged Single, 3: Both Sides)"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category to change position mode for",
+                                "enum": ["linear", "inverse", "option"]
+                            },
+                            "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol (optional for some categories, required for linear/inverse)",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                            },
+                            "coin": {
+                                "type": "string",
+                                "description": "Base coin for options category",
+                                "examples": ["BTC", "ETH", "SOL"]
+                            },
+                            "mode": {
+                                "type": "integer",
+                                "description": "Position mode: 0 = One-Way Mode (net position), 3 = Hedge Mode (separate buy/sell positions)",
+                                "enum": [0, 3]
+                            }
                         },
-                        "required": ["category", "mode"],
-                    },
+                        "required": ["category", "mode"]
+                    }
                 ),
                 Tool(
                     name="set_trading_stop",
-                    description="Set trading stop (take profit/stop loss) for a position. Trading must be enabled.",
+                    description="Set take profit and stop loss orders for an existing position. These orders automatically close your position at specified profit or loss levels to manage risk.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
-                            "symbol": {"type": "string", "description": "Symbol name"},
-                            "positionIdx": {"type": "integer", "description": "Position index"},
-                            "takeProfit": {"type": "string", "description": "Take profit price (optional)"},
-                            "stopLoss": {"type": "string", "description": "Stop loss price (optional)"},
-                            "tpTriggerBy": {"type": "string", "description": "Take profit trigger type (optional)"},
-                            "slTriggerBy": {"type": "string", "description": "Stop loss trigger type (optional)"},
-                            "tpslMode": {"type": "string", "description": "TP/SL mode (optional)"},
-                            "tpOrderType": {"type": "string", "description": "Take profit order type (optional)"},
-                            "slOrderType": {"type": "string", "description": "Stop loss order type (optional)"},
-                            "tpSize": {"type": "string", "description": "Take profit size (optional)"},
-                            "slSize": {"type": "string", "description": "Stop loss size (optional)"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category for the position",
+                                "enum": ["linear", "inverse", "option"]
+                            },
+                            "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol for the position",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                            },
+                            "positionIdx": {
+                                "type": "integer",
+                                "description": "Position index: 0 = one-way mode, 1 = hedge-mode Buy side, 2 = hedge-mode Sell side",
+                                "enum": [0, 1, 2]
+                            },
+                            "takeProfit": {
+                                "type": "string",
+                                "description": "Take profit price to automatically close position at profit target",
+                                "examples": ["52000", "3200", "150"]
+                            },
+                            "stopLoss": {
+                                "type": "string",
+                                "description": "Stop loss price to automatically close position to limit losses",
+                                "examples": ["48000", "2800", "90"]
+                            },
+                            "tpTriggerBy": {
+                                "type": "string",
+                                "description": "Take profit trigger price type",
+                                "enum": ["LastPrice", "IndexPrice", "MarkPrice"]
+                            },
+                            "slTriggerBy": {
+                                "type": "string",
+                                "description": "Stop loss trigger price type",
+                                "enum": ["LastPrice", "IndexPrice", "MarkPrice"]
+                            },
+                            "tpslMode": {
+                                "type": "string",
+                                "description": "TP/SL mode for partial position closure",
+                                "enum": ["Full", "Partial"]
+                            },
+                            "tpOrderType": {
+                                "type": "string",
+                                "description": "Take profit order type when triggered",
+                                "enum": ["Market", "Limit"]
+                            },
+                            "slOrderType": {
+                                "type": "string",
+                                "description": "Stop loss order type when triggered",
+                                "enum": ["Market", "Limit"]
+                            },
+                            "tpSize": {
+                                "type": "string",
+                                "description": "Take profit size for partial closure",
+                                "examples": ["0.5", "50", "100"]
+                            },
+                            "slSize": {
+                                "type": "string",
+                                "description": "Stop loss size for partial closure",
+                                "examples": ["0.5", "50", "100"]
+                            }
                         },
-                        "required": ["category", "symbol", "positionIdx"],
-                    },
+                        "required": ["category", "symbol", "positionIdx"]
+                    }
                 ),
                 Tool(
                     name="set_auto_add_margin",
-                    description="Set auto add margin for a position. Trading must be enabled.",
+                    description="Enable or disable automatic margin addition for isolated margin positions. When enabled, margin is automatically added to prevent liquidation.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
-                            "symbol": {"type": "string", "description": "Symbol name"},
-                            "autoAddMargin": {"type": "integer", "description": "Auto add margin (0: off, 1: on)"},
-                            "positionIdx": {"type": "integer", "description": "Position index (optional)"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category for the position",
+                                "enum": ["linear", "inverse"]
+                            },
+                            "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol for the position",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                            },
+                            "autoAddMargin": {
+                                "type": "integer",
+                                "description": "Auto add margin setting: 0 = disabled, 1 = enabled",
+                                "enum": [0, 1]
+                            },
+                            "positionIdx": {
+                                "type": "integer",
+                                "description": "Position index: 0 = one-way mode, 1 = hedge-mode Buy side, 2 = hedge-mode Sell side",
+                                "enum": [0, 1, 2]
+                            }
                         },
-                        "required": ["category", "symbol", "autoAddMargin"],
-                    },
+                        "required": ["category", "symbol", "autoAddMargin"]
+                    }
                 ),
                 Tool(
                     name="modify_position_margin",
-                    description="Add or reduce position margin. Trading must be enabled.",
+                    description="Manually add or reduce margin for an isolated margin position. Use positive values to add margin (reduce liquidation risk) or negative values to reduce margin.",
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "Product category"},
-                            "symbol": {"type": "string", "description": "Symbol name"},
-                            "margin": {"type": "string", "description": "Margin amount"},
-                            "positionIdx": {"type": "integer", "description": "Position index (optional)"},
+                            "category": {
+                                "type": "string",
+                                "description": "Product category for the position",
+                                "enum": ["linear", "inverse"]
+                            },
+                            "symbol": {
+                                "type": "string",
+                                "description": "Trading pair symbol for the position",
+                                "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                            },
+                            "margin": {
+                                "type": "string",
+                                "description": "Margin amount to add (positive) or reduce (negative). In quote currency for linear, base currency for inverse",
+                                "examples": ["100", "-50", "25.5", "-10.25"]
+                            },
+                            "positionIdx": {
+                                "type": "integer",
+                                "description": "Position index: 0 = one-way mode, 1 = hedge-mode Buy side, 2 = hedge-mode Sell side",
+                                "enum": [0, 1, 2]
+                            }
                         },
-                        "required": ["category", "symbol", "margin"],
-                    },
-                ),
+                        "required": ["category", "symbol", "margin"]
+                    }
+                )
             ]
         )
 
@@ -1066,6 +1653,9 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[TextCon
         elif name == "modify_position_margin":
             result = modify_position_margin(**arguments)
             return [TextContent(type="text", text=f"Modify Position Margin Response:\n{json.dumps(result.model_dump(), indent=2)}")]
+        elif name == "place_trigger_order":
+            result = place_trigger_order(**arguments)
+            return [TextContent(type="text", text=f"Place Trigger Order Response:\n{json.dumps(result.model_dump(), indent=2)}")]
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
