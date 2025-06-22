@@ -36,11 +36,6 @@ TRADING_ENABLED = os.getenv("BYBIT_TRADING_ENABLED", "false").lower() in ("true"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-logger.info(f"BYBIT_API_KEY present: {bool(BYBIT_API_KEY)}")
-logger.info(f"BYBIT_API_SECRET present: {bool(BYBIT_API_SECRET)}")
-logger.info(f"USE_TESTNET: {USE_TESTNET}")
-logger.info(f"TRADING_ENABLED: {TRADING_ENABLED}")
-
 # Custom error code for trading disabled
 TRADING_DISABLED_RET_CODE = 40300
 TRADING_DISABLED_RET_MSG = "Trading operations are disabled by server configuration."
@@ -430,3 +425,76 @@ def get_account_info() -> AccountInfoResponse:
     if isinstance(response, tuple):
         response = response[0]
     return AccountInfoResponse(**response)
+
+
+def place_trigger_order(
+    category: str,
+    symbol: str,
+    side: str,
+    orderType: str,
+    qty: str,
+    triggerPrice: str,
+    triggerDirection: int,
+    triggerBy: Union[str, None] = None,
+    price: Union[str, None] = None,
+    orderFilter: Union[str, None] = None,
+    timeInForce: Union[str, None] = None,
+    reduceOnly: Union[bool, None] = None,
+    closeOnTrigger: Union[bool, None] = None,
+    positionIdx: Union[int, None] = None,
+    orderLinkId: Union[str, None] = None,
+) -> PlaceOrderResponse:
+    """Place a trigger/conditional order and validate response.
+
+    Args:
+        category: Product category (linear, spot, inverse)
+        symbol: Trading pair symbol
+        side: Buy or Sell
+        orderType: Market or Limit
+        qty: Order quantity
+        triggerPrice: Price that triggers the order
+        triggerDirection: 1 for rising, 2 for falling
+        triggerBy: Price type for trigger (LastPrice, MarkPrice, IndexPrice)
+        price: Order price after trigger (for Limit orders)
+        orderFilter: Order filter for spot (Order, StopOrder, tpslOrder)
+        timeInForce: Time in force (GTC, IOC, FOK, PostOnly)
+        reduceOnly: Whether order can only reduce position
+        closeOnTrigger: Whether to close position on trigger
+        positionIdx: Position index for hedge mode
+        orderLinkId: Custom order ID
+
+    Returns:
+        PlaceOrderResponse with order details
+    """
+    if not TRADING_ENABLED:
+        return _get_trading_disabled_response(PlaceOrderResponse)
+
+    # Build parameters dict, only including non-None values
+    params = {
+        "category": category,
+        "symbol": symbol,
+        "side": side,
+        "orderType": orderType,
+        "qty": qty,
+        "triggerPrice": triggerPrice,
+        "triggerDirection": triggerDirection,
+    }
+
+    # Add optional parameters if they are provided
+    for key, value in [
+        ("triggerBy", triggerBy),
+        ("price", price),
+        ("orderFilter", orderFilter),
+        ("timeInForce", timeInForce),
+        ("reduceOnly", reduceOnly),
+        ("closeOnTrigger", closeOnTrigger),
+        ("positionIdx", positionIdx),
+        ("orderLinkId", orderLinkId),
+    ]:
+        if value is not None:
+            params[key] = value
+
+    response = bybit_session.place_order(**params)
+    if isinstance(response, tuple):
+        response = response[0]
+    return PlaceOrderResponse(**response)
