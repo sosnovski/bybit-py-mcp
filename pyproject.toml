@@ -1,15 +1,20 @@
 [project]
 name = "bybit-mcp"
-version = "0.1.0"
+version = "0.1.3"
 description = "Bybit MCP Server - Model Context Protocol implementation for Bybit trading API"
 authors = [{ name = "Brian Cusack", email = "briancusack78@gmail.com" }]
 requires-python = ">=3.13"
+readme = "README.md"
 dependencies = [
     "pybit>=5.11.0",
     "pydantic>=2.11.5",
     "python-dotenv>=1.1.0",
     "mcp>=1.1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/BCusack/bybit-py-mcp"
+Issues = "https://github.com/BCusack/bybit-py-mcp/issues"
 
 [project.scripts]
 bybit-mcp = "bybit_mcp.main:cli_main"

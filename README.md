@@ -115,20 +115,13 @@ npx -y @smithery/cli install @BCusack/bybit-full-mcp --client claude
 
 ### Using uvx (Easiest - No Installation Required)
 
-Run directly from GitHub without cloning or installing:
+Run directly from PyPi without cloning or installing:
+
+set environment variables and run:
 
 ```bash
 # Set environment variables and run
-BYBIT_API_KEY=your_api_key BYBIT_API_SECRET=your_api_secret uvx --from git+https://github.com/your-username/bybit-mcp.git bybit-mcp
-```
-
-Or with all options:
-```bash
-BYBIT_API_KEY=your_api_key \
-BYBIT_API_SECRET=your_api_secret \
-BYBIT_TESTNET=false \
-BYBIT_TRADING_ENABLED=false \
-uvx --from git+https://github.com/your-username/bybit-mcp.git bybit-mcp
+uvx bybit-mcp
 ```
 
 > **Note**: Replace `your-username/bybit-mcp` with the actual GitHub repository URL
@@ -281,7 +274,6 @@ To use the Bybit MCP server with Claude Desktop, add the following configuration
     "bybit-mcp": {
       "command": "uvx",
       "args": [
-        "--from", "git+https://github.com/your-username/bybit-mcp.git",
         "bybit-mcp"
       ],
       "env": {
@@ -357,9 +349,8 @@ Add to your VS Code settings.json:
     "servers": {
       "bybit-mcp": {
         "type": "stdio",
-        "command": "uv",
-        "args": ["run", "bybit-mcp"],
-        "cwd": "path/to/bybit-mcp",
+        "command": "uvx",
+        "args": ["bybit-mcp"],
         "env": {
           "BYBIT_API_KEY": "${input:bybit_api_key}",
           "BYBIT_API_SECRET": "${input:bybit_api_secret}",
