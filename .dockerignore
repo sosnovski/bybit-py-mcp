@@ -62,6 +62,7 @@ coverage.xml
 # Documentation
 docs/
 *.md
+!README.md
 
 # Environment files (will be passed via Docker run)
 .env*
