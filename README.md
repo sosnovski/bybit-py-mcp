@@ -1,6 +1,5 @@
 # Bybit MCP Server
 
-[![smithery badge](https://smithery.ai/badge/@BCusack/bybit-full-mcp)](https://smithery.ai/server/@BCusack/bybit-full-mcp)
 > ⚠️ **TRADING WARNING** ⚠️  
 > **This MCP server can execute REAL TRADING OPERATIONS on Bybit when `BYBIT_TRADING_ENABLED=true`.**  
 > **Trading operations use REAL MONEY and can result in FINANCIAL LOSSES.**  
@@ -101,14 +100,6 @@ A comprehensive Model Context Protocol (MCP) server that provides full access to
 
 ## Installation
 
-### Installing via Smithery
-
-To install bybit-full-mcp for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@BCusack/bybit-full-mcp):
-
-```bash
-npx -y @smithery/cli install @BCusack/bybit-full-mcp --client claude
-```
-
 ### Prerequisites
 - Python 3.13+
 - [uv](https://docs.astral.sh/uv/) package manager
@@ -116,17 +107,11 @@ npx -y @smithery/cli install @BCusack/bybit-full-mcp --client claude
 ### Using uvx (Easiest - No Installation Required)
 
 Run directly from PyPi without cloning or installing:
-
-set environment variables and run:
-
 ```bash
-# Set environment variables and run
 uvx bybit-mcp
 ```
 
-> **Note**: Replace `your-username/bybit-mcp` with the actual GitHub repository URL
-
-### Using uv (Recommended for Development)
+### Using uv (Recommended for local Development)
 
 1. Clone the repository:
 ```bash
@@ -154,13 +139,6 @@ BYBIT_TRADING_ENABLED=false  # Set to true to enable trading operations
 4. Run the server:
 ```bash
 uv run bybit-mcp
-```
-
-### Using pip
-
-```bash
-pip install -e .
-python -m bybit_mcp.main
 ```
 
 ## Docker Usage
