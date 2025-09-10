@@ -108,7 +108,7 @@ A comprehensive Model Context Protocol (MCP) server that provides full access to
 
 Run directly from PyPi without cloning or installing:
 ```bash
-uvx bybit-mcp
+uvx bybit-mcp@git+https://github.com/sosnovski/bybit-py-mcp.git
 ```
 
 ### Using uv (Recommended for local Development)
@@ -252,7 +252,7 @@ To use the Bybit MCP server with Claude Desktop, add the following configuration
     "bybit-mcp": {
       "command": "uvx",
       "args": [
-        "bybit-mcp"
+        "bybit-mcp@git+https://github.com/sosnovski/bybit-py-mcp.git"
       ],
       "env": {
         "BYBIT_API_KEY": "your_api_key_here",
