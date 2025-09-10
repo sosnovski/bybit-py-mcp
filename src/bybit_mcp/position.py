@@ -135,36 +135,59 @@ def switch_position_mode(
 def set_trading_stop(
     category: str,
     symbol: str,
-    positionIdx: Optional[int] = None,
+    tpslMode: str,
+    positionIdx: int,
     takeProfit: Optional[str] = None,
     stopLoss: Optional[str] = None,
     trailingStop: Optional[str] = None,
     tpTriggerBy: Optional[str] = None,
     slTriggerBy: Optional[str] = None,
     activePrice: Optional[str] = None,
-    tpslMode: Optional[str] = None,
+    tpSize: Optional[str] = None,
+    slSize: Optional[str] = None,
     tpLimitPrice: Optional[str] = None,
     slLimitPrice: Optional[str] = None,
     tpOrderType: Optional[str] = None,
     slOrderType: Optional[str] = None,
 ) -> SetTradingStopResponse:
-    """Set trading stop for a position (take profit, stop loss)."""
+    """Set trading stop for a position (take profit, stop loss).
+    
+    Args:
+        category: Product category ('linear', 'inverse')
+        symbol: Trading pair symbol (e.g., 'BTCUSDT')
+        tpslMode: TP/SL mode ('Full' or 'Partial')
+        positionIdx: Position index (0=one-way, 1=hedge-buy, 2=hedge-sell)
+        takeProfit: Take profit price (optional)
+        stopLoss: Stop loss price (optional)
+        trailingStop: Trailing stop distance (optional)
+        tpTriggerBy: TP trigger price type (optional)
+        slTriggerBy: SL trigger price type (optional) 
+        activePrice: Trailing stop trigger price (optional)
+        tpSize: TP size for partial mode (optional)
+        slSize: SL size for partial mode (optional)
+        tpLimitPrice: TP limit order price (optional)
+        slLimitPrice: SL limit order price (optional)
+        tpOrderType: TP order type when triggered (optional)
+        slOrderType: SL order type when triggered (optional)
+    """
     if not TRADING_ENABLED:
         return _get_trading_disabled_response(SetTradingStopResponse)
 
     params = {
         "category": category,
         "symbol": symbol,
+        "tpslMode": tpslMode,
+        "positionIdx": positionIdx,
     }
     optional_params = {
-        "positionIdx": str(positionIdx) if positionIdx is not None else None,
         "takeProfit": takeProfit,
         "stopLoss": stopLoss,
         "trailingStop": trailingStop,
         "tpTriggerBy": tpTriggerBy,
         "slTriggerBy": slTriggerBy,
         "activePrice": activePrice,
-        "tpslMode": tpslMode,
+        "tpSize": tpSize,
+        "slSize": slSize,
         "tpLimitPrice": tpLimitPrice,
         "slLimitPrice": slLimitPrice,
         "tpOrderType": tpOrderType,

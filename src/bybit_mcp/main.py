@@ -1373,12 +1373,17 @@ async def handle_list_tools() -> List[Tool]:
                             "category": {
                                 "type": "string",
                                 "description": "Product category for the position",
-                                "enum": ["linear", "inverse", "option"]
+                                "enum": ["linear", "inverse"]
                             },
                             "symbol": {
                                 "type": "string",
                                 "description": "Trading pair symbol for the position",
                                 "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+                            },
+                            "tpslMode": {
+                                "type": "string",
+                                "description": "TP/SL mode: Full = entire position, Partial = partial position",
+                                "enum": ["Full", "Partial"]
                             },
                             "positionIdx": {
                                 "type": "integer",
@@ -1387,13 +1392,18 @@ async def handle_list_tools() -> List[Tool]:
                             },
                             "takeProfit": {
                                 "type": "string",
-                                "description": "Take profit price to automatically close position at profit target",
-                                "examples": ["52000", "3200", "150"]
+                                "description": "Take profit price to automatically close position at profit target. Use '0' to cancel TP",
+                                "examples": ["52000", "3200", "150", "0"]
                             },
                             "stopLoss": {
                                 "type": "string",
-                                "description": "Stop loss price to automatically close position to limit losses",
-                                "examples": ["48000", "2800", "90"]
+                                "description": "Stop loss price to automatically close position to limit losses. Use '0' to cancel SL",
+                                "examples": ["48000", "2800", "90", "0"]
+                            },
+                            "trailingStop": {
+                                "type": "string",
+                                "description": "Trailing stop distance. Use '0' to cancel trailing stop",
+                                "examples": ["100", "50", "0"]
                             },
                             "tpTriggerBy": {
                                 "type": "string",
@@ -1405,10 +1415,30 @@ async def handle_list_tools() -> List[Tool]:
                                 "description": "Stop loss trigger price type",
                                 "enum": ["LastPrice", "IndexPrice", "MarkPrice"]
                             },
-                            "tpslMode": {
+                            "activePrice": {
                                 "type": "string",
-                                "description": "TP/SL mode for partial position closure",
-                                "enum": ["Full", "Partial"]
+                                "description": "Trailing stop trigger price - required when setting trailing stop",
+                                "examples": ["50000", "3000", "140"]
+                            },
+                            "tpSize": {
+                                "type": "string",
+                                "description": "Take profit size for partial closure mode only",
+                                "examples": ["0.5", "50", "100"]
+                            },
+                            "slSize": {
+                                "type": "string",
+                                "description": "Stop loss size for partial closure mode only",
+                                "examples": ["0.5", "50", "100"]
+                            },
+                            "tpLimitPrice": {
+                                "type": "string",
+                                "description": "Take profit limit order price when tpOrderType=Limit",
+                                "examples": ["52500", "3250", "155"]
+                            },
+                            "slLimitPrice": {
+                                "type": "string",
+                                "description": "Stop loss limit order price when slOrderType=Limit",
+                                "examples": ["47500", "2750", "85"]
                             },
                             "tpOrderType": {
                                 "type": "string",
@@ -1419,19 +1449,9 @@ async def handle_list_tools() -> List[Tool]:
                                 "type": "string",
                                 "description": "Stop loss order type when triggered",
                                 "enum": ["Market", "Limit"]
-                            },
-                            "tpSize": {
-                                "type": "string",
-                                "description": "Take profit size for partial closure",
-                                "examples": ["0.5", "50", "100"]
-                            },
-                            "slSize": {
-                                "type": "string",
-                                "description": "Stop loss size for partial closure",
-                                "examples": ["0.5", "50", "100"]
                             }
                         },
-                        "required": ["category", "symbol", "positionIdx"]
+                        "required": ["category", "symbol", "tpslMode", "positionIdx"]
                     }
                 ),
                 Tool(
