@@ -34,21 +34,20 @@ bybit_session = HTTP(
 
 def get_position_info(
     category: str,
-    settleCoin: str,
+    settleCoin: Optional[str] = None,
     symbol: Optional[str] = None,
     baseCoin: Optional[str] = None,
     limit: Optional[int] = None,
     cursor: Optional[str] = None,
 ) -> GetPositionInfoResponse:
     """Query real-time position data."""
-    params = {
-        "category": category,
-        "settleCoin": settleCoin,
-    }
+    params = {"category": category}
     if symbol:
         params["symbol"] = symbol
     if baseCoin:
         params["baseCoin"] = baseCoin
+    if settleCoin:
+        params["settleCoin"] = settleCoin
     if limit is not None:
         params["limit"] = str(limit)  # Convert limit to string
     if cursor:

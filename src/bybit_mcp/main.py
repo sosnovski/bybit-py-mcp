@@ -934,24 +934,29 @@ async def handle_list_tools() -> List[Tool]:
     trade_info_tools = [
         Tool(
             name="get_open_closed_orders",
-            description="Get both open (pending) and recently closed orders. Essential for monitoring order status and trading activity. Use this to check if orders are filled, cancelled, or still pending.",
+            description="Query unfilled or partially filled orders in real-time. Also supports querying recent 500 closed status orders (Cancelled, Filled). Essential for monitoring order status and trading activity.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "category": {
                         "type": "string",
-                        "description": "Product category to query orders for",
+                        "description": "Product category to query orders for. Unified account: spot, linear, option. Normal account: linear, inverse",
                         "enum": ["linear", "spot", "option", "inverse"]
                     },
                     "symbol": {
                         "type": "string",
-                        "description": "Specific trading pair to get orders for. Leave empty to get all orders in category",
+                        "description": "Trading symbol to filter orders. Leave empty to get all orders in category. Required if settleCoin not present",
                         "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
                     },
                     "baseCoin": {
                         "type": "string",
-                        "description": "Base coin filter for derivatives and options",
+                        "description": "Base coin filter. For linear & inverse, either symbol or baseCoin is required",
                         "examples": ["BTC", "ETH", "SOL"]
+                    },
+                    "settleCoin": {
+                        "type": "string",
+                        "description": "Settle coin filter. For linear & inverse only. Required if symbol not present",
+                        "examples": ["USDT", "USDC", "BTC"]
                     },
                     "orderId": {
                         "type": "string",
@@ -960,17 +965,23 @@ async def handle_list_tools() -> List[Tool]:
                     },
                     "orderLinkId": {
                         "type": "string",
-                        "description": "Specific custom order ID to query",
+                        "description": "User customised order ID to query",
                         "examples": ["myorder123", "trade_2024_001"]
                     },
                     "openOnly": {
                         "type": "integer",
-                        "description": "Filter by open orders only: 0 = all orders, 1 = open orders only, 2 = closed orders only",
-                        "enum": [0, 1, 2]
+                        "description": "Order status filter. 0: open orders only (default), 1: include recent closed orders, 2: all status",
+                        "enum": [0, 1, 2],
+                        "default": 0
+                    },
+                    "orderFilter": {
+                        "type": "string",
+                        "description": "Order filter condition. Valid for spot only",
+                        "enum": ["Order", "tpslOrder", "StopOrder", "OcoOrder", "BidirectionalTpslOrder"]
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of records to return (1-50)",
+                        "description": "Number of records per page (1-50)",
                         "minimum": 1,
                         "maximum": 50,
                         "default": 20
@@ -1195,7 +1206,7 @@ async def handle_list_tools() -> List[Tool]:
                     },
                     "symbol": {
                         "type": "string",
-                        "description": "Specific trading pair to get position for. Leave empty to get all positions in category",
+                        "description": "Specific trading pair to get position for. Leave empty to get all positions in category. Required if settleCoin is not present",
                         "examples": ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
                     },
                     "baseCoin": {
@@ -1205,7 +1216,7 @@ async def handle_list_tools() -> List[Tool]:
                     },
                     "settleCoin": {
                         "type": "string",
-                        "description": "Settlement coin filter",
+                        "description": "Settlement coin filter. Required if symbol is not present",
                         "examples": ["USDT", "BTC", "ETH"]
                     },
                     "limit": {
@@ -1220,7 +1231,7 @@ async def handle_list_tools() -> List[Tool]:
                         "description": "Pagination cursor for next page of results"
                     }
                 },
-                "required": ["category", "settleCoin"]
+                "required": ["category"]
             }
         ),
         Tool(

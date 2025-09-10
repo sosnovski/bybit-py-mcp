@@ -35,28 +35,44 @@ class CancelOrderResponse(SingleOrderItemApiResponse):
 class Order(BaseModel):
     orderId: str
     orderLinkId: str
-    blockTradeId: str
+    blockTradeId: Optional[str] = None
     symbol: str
     price: str
     qty: str
     side: str
-    isLeverage: str
-    positionIdx: int
+    isLeverage: Optional[str] = None
+    positionIdx: Optional[int] = None
     orderStatus: str
     createType: Optional[str] = None  # Optional based on category
-    cancelType: str
-    rejectReason: str
-    avgPrice: str
-    leavesQty: str
-    leavesValue: str
-    cumExecQty: str
-    cumExecValue: str
-    cumExecFee: str
-    timeInForce: str
+    cancelType: Optional[str] = None
+    rejectReason: Optional[str] = None
+    avgPrice: Optional[str] = None
+    leavesQty: Optional[str] = None
+    leavesValue: Optional[str] = None
+    cumExecQty: Optional[str] = None
+    cumExecValue: Optional[str] = None
+    cumExecFee: Optional[str] = None
+    timeInForce: Optional[str] = None
     orderType: str
-    stopOrderType: str
-    orderIv: str
-    # Add other fields from documentation as needed
+    stopOrderType: Optional[str] = None
+    orderIv: Optional[str] = None
+    triggerPrice: Optional[str] = None
+    takeProfit: Optional[str] = None
+    stopLoss: Optional[str] = None
+    createdTime: Optional[str] = None
+    updatedTime: Optional[str] = None
+    triggerDirection: Optional[int] = None
+    triggerBy: Optional[str] = None
+    reduceOnly: Optional[bool] = None
+    closeOnTrigger: Optional[bool] = None
+    smpType: Optional[str] = None
+    smpGroup: Optional[int] = None
+    smpOrderId: Optional[str] = None
+    tpslMode: Optional[str] = None
+    tpLimitPrice: Optional[str] = None
+    slLimitPrice: Optional[str] = None
+    placeType: Optional[str] = None
+    # Additional fields based on official API documentation
 
 
 class PaginatedOrderListResult(BaseModel):  # New consolidated model
