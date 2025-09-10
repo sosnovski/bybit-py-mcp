@@ -29,10 +29,10 @@ class PositionInfoItem(BaseModel):
     stopLoss: str
     trailingStop: str
     sessionAvgPrice: str  # For USDC contracts
-    delta: str
-    gamma: str
-    vega: str
-    theta: str
+    delta: Optional[str] = None  # Option Greeks - only for option category
+    gamma: Optional[str] = None  # Option Greeks - only for option category
+    vega: Optional[str] = None   # Option Greeks - only for option category
+    theta: Optional[str] = None  # Option Greeks - only for option category
     unrealisedPnl: str
     curRealisedPnl: str
     cumRealisedPnl: str
