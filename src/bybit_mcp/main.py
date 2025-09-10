@@ -1220,7 +1220,7 @@ async def handle_list_tools() -> List[Tool]:
                         "description": "Pagination cursor for next page of results"
                     }
                 },
-                "required": ["category"]
+                "required": ["category", "settleCoin"]
             }
         ),
         Tool(
