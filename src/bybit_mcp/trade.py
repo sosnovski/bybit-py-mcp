@@ -74,101 +74,20 @@ def place_order(
     price: Union[str, None] = None,
     isLeverage: Union[int, None] = None,
     orderLinkId: Union[str, None] = None,
-    timeInForce: Union[str, None] = None,
-    positionIdx: Union[int, None] = None,
-    reduceOnly: Union[bool, None] = None,
-    triggerBy: Union[str, None] = None,
-    triggerPrice: Union[str, None] = None,
-    triggerDirection: Union[int, None] = None,
-    takeProfit: Union[str, None] = None,
-    stopLoss: Union[str, None] = None,
-    tpTriggerBy: Union[str, None] = None,
-    slTriggerBy: Union[str, None] = None,
-    marketUnit: Union[str, None] = None,
-    smpType: Union[str, None] = None,
 ) -> PlaceOrderResponse:
-    """Place a new order with comprehensive risk management and validate response.
-    
-    Args:
-        category: Product category (linear, spot, option, inverse)
-        symbol: Trading pair symbol (e.g., 'BTCUSDT')
-        side: Order side ('Buy' or 'Sell')
-        orderType: Order type ('Market' or 'Limit')
-        qty: Order quantity as string
-        price: Order price (required for Limit orders)
-        isLeverage: Use leverage for spot margin (0 or 1)
-        orderLinkId: Custom order ID for tracking
-        timeInForce: Execution strategy (GTC, IOC, FOK, PostOnly)
-        positionIdx: Position mode index (0=One-way, 1=Hedge Buy, 2=Hedge Sell)
-        reduceOnly: Reduce-only order to close position
-        triggerBy: Trigger price type for conditional orders
-        triggerPrice: Trigger price for conditional orders
-        triggerDirection: Trigger direction (1=rise above, 2=fall below)
-        takeProfit: Take profit price for automatic profit taking
-        stopLoss: Stop loss price for risk management
-        tpTriggerBy: Take profit trigger price type
-        slTriggerBy: Stop loss trigger price type
-        marketUnit: Market order unit (baseCoin or quoteCoin)
-        smpType: Self-match prevention type
-    
-    Returns:
-        PlaceOrderResponse: Order placement result with orderId and status
-    """
+    """Place a new order and validate response."""
     if not TRADING_ENABLED:
         return _get_trading_disabled_response(PlaceOrderResponse)
-    
-    # Validate critical parameter combinations for safety
-    if orderType == "Limit" and price is None:
-        raise ValueError("Price is required for Limit orders")
-    
-    if triggerPrice is not None and triggerBy is None:
-        raise ValueError("triggerBy is required when triggerPrice is specified")
-    
-    if triggerDirection is not None and triggerPrice is None:
-        raise ValueError("triggerPrice is required when triggerDirection is specified")
-    
-    if takeProfit is not None and tpTriggerBy is None:
-        # Default to LastPrice if not specified for safety
-        tpTriggerBy = "LastPrice"
-    
-    if stopLoss is not None and slTriggerBy is None:
-        # Default to LastPrice if not specified for safety
-        slTriggerBy = "LastPrice"
-    
-    # Build parameters dict, excluding None values for cleaner API calls
-    params = {
-        "category": category,
-        "symbol": symbol,
-        "side": side,
-        "orderType": orderType,
-        "qty": qty,
-    }
-    
-    # Add optional parameters only if they are provided
-    optional_params = {
-        "price": price,
-        "isLeverage": isLeverage,
-        "orderLinkId": orderLinkId,
-        "timeInForce": timeInForce,
-        "positionIdx": positionIdx,
-        "reduceOnly": reduceOnly,
-        "triggerBy": triggerBy,
-        "triggerPrice": triggerPrice,
-        "triggerDirection": triggerDirection,
-        "takeProfit": takeProfit,
-        "stopLoss": stopLoss,
-        "tpTriggerBy": tpTriggerBy,
-        "slTriggerBy": slTriggerBy,
-        "marketUnit": marketUnit,
-        "smpType": smpType,
-    }
-    
-    # Add non-None optional parameters
-    for key, value in optional_params.items():
-        if value is not None:
-            params[key] = value
-    
-    response = bybit_session.place_order(**params)
+    response = bybit_session.place_order(
+        category=category,
+        symbol=symbol,
+        side=side,
+        orderType=orderType,
+        qty=qty,
+        price=price,
+        isLeverage=isLeverage,
+        orderLinkId=orderLinkId,
+    )
     if isinstance(response, tuple):
         response = response[0]
     return PlaceOrderResponse(**response)
