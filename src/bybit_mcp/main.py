@@ -595,22 +595,6 @@ async def handle_list_tools() -> List[Tool]:
                                 "description": "Order execution strategy: 'GTC' = Good Till Cancel (default), 'IOC' = Immediate or Cancel, 'FOK' = Fill or Kill, 'PostOnly' = maker only",
                                 "enum": ["GTC", "IOC", "FOK", "PostOnly"],
                                 "default": "GTC"
-                        },
-                        "positionIdx": {
-                                "type": "integer",
-                                "description": "Position mode index for derivatives. 0 = One-way mode, 1 = Hedge mode Buy side, 2 = Hedge mode Sell side. Required for hedge mode trading",
-                                "enum": [0, 1, 2],
-                                "default": 0
-                        },
-                        "reduceOnly": {
-                                "type": "boolean",
-                                "description": "Reduce-only order to close position without opening new one. Critical for risk management in derivatives trading",
-                                "default": false
-                        },
-                        "triggerBy": {
-                                "type": "string",
-                                "description": "Trigger price type for conditional orders: 'LastPrice', 'IndexPrice', 'MarkPrice'",
-                                "enum": ["LastPrice", "IndexPrice", "MarkPrice"]
                         }
                     },
                     "required": ["category", "symbol", "side", "orderType", "qty"]
