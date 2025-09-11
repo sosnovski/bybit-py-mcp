@@ -156,3 +156,145 @@ def test_place_amend_and_cancel_linear_limit_order():
                     print(f"Cleanup failed for order ID {placed_order_id} in finally: {cleanup_cancel.retMsg}")
             except Exception as cleanup_e:
                 print(f"Error during final cleanup of order ID {placed_order_id}: {cleanup_e}")
+
+
+@pytest.mark.skipif(os.getenv("BYBIT_TESTNET", "false").lower() not in ("true", "1"), reason="Trade tests require BYBIT_TESTNET=true")
+def test_place_order_with_risk_management():
+    """Test placing a limit order with take profit and stop loss for risk management."""
+    category = "linear"
+    symbol = "BTCUSDT"
+    side = "Buy"
+    orderType = "Limit"
+    qty = "0.001"
+    price = "10000.00"  # Far below market price
+    takeProfit = "15000.00"  # Take profit at higher price
+    stopLoss = "8000.00"   # Stop loss at lower price
+    timeInForce = "GTC"  # Good Till Cancel
+    reduceOnly = False
+    orderLinkId = f"test_risk_mgmt_{os.urandom(8).hex()}"
+    placed_order_id = None
+
+    try:
+        # Place order with risk management parameters
+        place_response = place_order(
+            category=category,
+            symbol=symbol,
+            side=side,
+            orderType=orderType,
+            qty=qty,
+            price=price,
+            takeProfit=takeProfit,
+            stopLoss=stopLoss,
+            timeInForce=timeInForce,
+            reduceOnly=reduceOnly,
+            orderLinkId=orderLinkId
+        )
+        
+        assert isinstance(place_response, PlaceOrderResponse)
+        assert place_response.retCode == 0, f"Place Order with Risk Mgmt failed: {place_response.retMsg}"
+        assert place_response.result is not None
+        assert place_response.result.orderId is not None
+        placed_order_id = place_response.result.orderId
+        print(f"\nPlaced order with TP/SL - ID: {placed_order_id}, TP: {takeProfit}, SL: {stopLoss}")
+
+        # Cancel the order for cleanup
+        cancel_response = cancel_order(category=category, symbol=symbol, orderId=placed_order_id)
+        assert cancel_response.retCode == 0, f"Cancel Order failed: {cancel_response.retMsg}"
+        print(f"Cancelled risk management order ID: {placed_order_id}")
+
+    except Exception as e:
+        pytest.fail(f"test_place_order_with_risk_management failed: {e}")
+    finally:
+        if placed_order_id:
+            try:
+                cleanup_cancel = cancel_order(category=category, symbol=symbol, orderId=placed_order_id)
+                if cleanup_cancel.retCode == 0:
+                    print(f"Final cleanup successful for order ID: {placed_order_id}")
+            except Exception as cleanup_e:
+                print(f"Error during final cleanup of order ID {placed_order_id}: {cleanup_e}")
+
+
+def test_place_order_validation():
+    """Test parameter validation for place_order function."""
+    
+    # Test that price is required for Limit orders
+    with pytest.raises(ValueError, match="Price is required for Limit orders"):
+        place_order(
+            category="linear",
+            symbol="BTCUSDT", 
+            side="Buy",
+            orderType="Limit",
+            qty="0.001"
+            # Missing required price parameter
+        )
+
+    # Test that triggerBy is required when triggerPrice is specified
+    with pytest.raises(ValueError, match="triggerBy is required when triggerPrice is specified"):
+        place_order(
+            category="linear",
+            symbol="BTCUSDT",
+            side="Buy", 
+            orderType="Market",
+            qty="0.001",
+            triggerPrice="50000"
+            # Missing triggerBy parameter
+        )
+
+    # Test that triggerPrice is required when triggerDirection is specified  
+    with pytest.raises(ValueError, match="triggerPrice is required when triggerDirection is specified"):
+        place_order(
+            category="linear",
+            symbol="BTCUSDT",
+            side="Buy",
+            orderType="Market", 
+            qty="0.001",
+            triggerDirection=1
+            # Missing triggerPrice parameter
+        )
+
+    print("All parameter validation tests passed!")
+
+
+def test_place_order_default_trigger_types():
+    """Test that default trigger types are set for TP/SL when not specified."""
+    import bybit_mcp.trade as trade_module
+    
+    # Mock the bybit_session to capture the parameters passed
+    original_trading_enabled = trade_module.TRADING_ENABLED
+    original_place_order = trade_module.bybit_session.place_order
+    
+    captured_params = None
+    
+    def mock_place_order(**kwargs):
+        nonlocal captured_params
+        captured_params = kwargs
+        # Return a mock response
+        return {"retCode": 0, "retMsg": "OK", "result": {"orderId": "test123", "orderLinkId": "test_link"}}
+    
+    try:
+        # Enable trading and mock the place_order function
+        trade_module.TRADING_ENABLED = True
+        trade_module.bybit_session.place_order = mock_place_order
+        
+        # Call place_order with TP/SL but without trigger types
+        trade_module.place_order(
+            category="linear",
+            symbol="BTCUSDT",
+            side="Buy",
+            orderType="Limit",
+            qty="0.001",
+            price="50000",
+            takeProfit="55000",
+            stopLoss="45000"
+        )
+        
+        # Check that default trigger types were added
+        assert captured_params is not None
+        assert captured_params.get("tpTriggerBy") == "LastPrice"
+        assert captured_params.get("slTriggerBy") == "LastPrice"
+        print("Default trigger types correctly set for TP/SL!")
+        
+    finally:
+        # Restore original values
+        trade_module.TRADING_ENABLED = original_trading_enabled
+        trade_module.bybit_session.place_order = original_place_order
