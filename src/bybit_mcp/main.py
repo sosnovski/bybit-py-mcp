@@ -610,6 +610,47 @@ async def handle_list_tools() -> List[Tool]:
                                 "type": "string",
                                 "description": "Trigger price type for conditional orders: 'LastPrice', 'IndexPrice', 'MarkPrice'",
                                 "enum": ["LastPrice", "IndexPrice", "MarkPrice"]
+                        },
+                        "triggerPrice": {
+                                "type": "string",
+                                "description": "Trigger price for conditional orders. Order activates when market reaches this price",
+                                "examples": ["50000", "3000.5", "0.001"]
+                        },
+                        "triggerDirection": {
+                                "type": "integer",
+                                "description": "Trigger direction: 1 = triggered when market price rises above trigger, 2 = triggered when falls below",
+                                "enum": [1, 2]
+                        },
+                        "takeProfit": {
+                                "type": "string",
+                                "description": "Take profit price. Automatically close position when price reaches this level for profit taking",
+                                "examples": ["55000", "3500.0", "0.002"]
+                        },
+                        "stopLoss": {
+                                "type": "string",
+                                "description": "Stop loss price. Automatically close position when price reaches this level to limit losses",
+                                "examples": ["45000", "2500.0", "0.0008"]
+                        },
+                        "tpTriggerBy": {
+                                "type": "string",
+                                "description": "Take profit trigger price type: 'LastPrice', 'IndexPrice', 'MarkPrice'",
+                                "enum": ["LastPrice", "IndexPrice", "MarkPrice"]
+                        },
+                        "slTriggerBy": {
+                                "type": "string",
+                                "description": "Stop loss trigger price type: 'LastPrice', 'IndexPrice', 'MarkPrice'",
+                                "enum": ["LastPrice", "IndexPrice", "MarkPrice"]
+                        },
+                        "marketUnit": {
+                                "type": "string",
+                                "description": "For market orders: 'baseCoin' to specify quantity in base currency, 'quoteCoin' for quote currency",
+                                "enum": ["baseCoin", "quoteCoin"]
+                        },
+                        "smpType": {
+                                "type": "string",
+                                "description": "Self-match prevention: 'None', 'CancelMaker', 'CancelTaker', 'CancelBoth'",
+                                "enum": ["None", "CancelMaker", "CancelTaker", "CancelBoth"],
+                                "default": "None"
                         }
                     },
                     "required": ["category", "symbol", "side", "orderType", "qty"]
